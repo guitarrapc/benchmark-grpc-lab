@@ -17,7 +17,7 @@ namespace Benchmark.Client.LoadTester
     public interface ILoadTester
     {
         Task<ClientInfo[]> ListClients(CancellationToken ct = default);
-        Task Run(int processCount, int executeCount, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default);
+        Task Run(int processCount, string iterations, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default);
     }
 
     public class ClientInfo
@@ -85,7 +85,7 @@ namespace Benchmark.Client.LoadTester
             return new[] { CurrentInfo };
         }
 
-        public async Task Run(int processCount, int executeCount, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default)
+        public async Task Run(int processCount, string iterations, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default)
         {
             var tasks = new List<Task>();
             var m = _runner.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -95,7 +95,7 @@ namespace Benchmark.Client.LoadTester
 
             for (var i = 0; i < processCount; i++)
             {
-                var obj = m.Invoke(_runner, new object[] { hostAddress, reportId });
+                var obj = m.Invoke(_runner, new object[] { hostAddress, iterations, reportId });
                 if (obj is Task task)
                 {
                     tasks.Add(task);
@@ -144,12 +144,12 @@ namespace Benchmark.Client.LoadTester
             return clients;
         }
 
-        public async Task Run(int processCount, int executeCount, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default)
+        public async Task Run(int processCount, string iterations, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default)
         {
             var command = new List<string> {
                 "#!/bin/bash",
                 "export DOTNET_CLI_HOME=/tmp",
-                $"BENCHCLIENT_RUNASWEB=false ~/client/Benchmark.Client benchmarkrunner {benchCommand} -hostAddress {hostAddress} -reportId {reportId}"
+                $"BENCHCLIENT_RUNASWEB=false ~/client/Benchmark.Client benchmarkrunner {benchCommand} -hostAddress {hostAddress} -reportId {reportId} -iterations {iterations}"
             };
 
             // get target clients

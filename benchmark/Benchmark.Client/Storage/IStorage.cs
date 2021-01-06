@@ -41,7 +41,7 @@ namespace Benchmark.Client.Storage
         /// <param name="overwrite"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default);
+        Task<string> Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default);
     }
 
     public static class StorageFactory
@@ -144,16 +144,17 @@ namespace Benchmark.Client.Storage
         /// <param name="overwrite"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        public async Task Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
+        public async Task<string> Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
         {
             var dir = $"{path}/{prefix.TrimEnd('/')}";
             Directory.CreateDirectory(dir);
 
             var basePath = Path.Combine(dir, name);
-            Save(content, basePath, overwrite);
+            var savePath = Save(content, basePath, overwrite);
+            return savePath;
         }
 
-        private void Save(string content, string path, bool overwrite)
+        private string Save(string content, string path, bool overwrite)
         {
             lock (lockObj)
             {
@@ -161,6 +162,7 @@ namespace Benchmark.Client.Storage
 
                 _logger.LogInformation($"Save content to local storage {savePath}");
                 File.WriteAllText(savePath, content);
+                return savePath;
             }
         }
 
@@ -272,21 +274,23 @@ namespace Benchmark.Client.Storage
         /// <param name="overwrite"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        public async Task Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
+        public async Task<string> Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
         {
             await semaphore.WaitAsync();
             try
             {
                 var basePath = $"{prefix}/{name}";
-                var saveObject = overwrite ? basePath : await GetSafeSaveObject(path, basePath, 1, ct);
+                var savePath = overwrite ? basePath : await GetSafeSavePath(path, basePath, 1, ct);
 
-                _logger.LogInformation($"uploading content to S3. bucket {path} key {saveObject}");
+                _logger.LogInformation($"uploading content to S3. bucket {path} key {savePath}");
                 await _client.PutObjectAsync(new Amazon.S3.Model.PutObjectRequest
                 {
                     BucketName = path,
                     ContentBody = content,
-                    Key = saveObject,
+                    Key = savePath,
                 }, ct);
+
+                return $"https://{path}.s3-ap-northeast-1.amazonaws.com/{savePath}";
             }
             finally
             {
@@ -304,7 +308,7 @@ namespace Benchmark.Client.Storage
         /// <param name="suffixNamePattern"></param>
         /// <param name="savePath"></param>
         /// <returns></returns>
-        private async Task<string> GetSafeSaveObject(string bucket, string basePath, int index, CancellationToken ct, string suffixNamePattern = "{0:00000}", string savePath = "")
+        private async Task<string> GetSafeSavePath(string bucket, string basePath, int index, CancellationToken ct, string suffixNamePattern = "{0:00000}", string savePath = "")
         {
             if (index == 99999)
                 return savePath;
@@ -315,7 +319,7 @@ namespace Benchmark.Client.Storage
 
             var fileName = GetFileNameWithoutExtension(basePath) + "_" + string.Format(suffixNamePattern, index) + Path.GetExtension(basePath);
             savePath = $"{GetPrefix(basePath)}/{fileName}";
-            return await GetSafeSaveObject(bucket, basePath, index + 1, ct, suffixNamePattern, savePath);
+            return await GetSafeSavePath(bucket, basePath, index + 1, ct, suffixNamePattern, savePath);
         }
 
         private async Task<bool> Exists(string bucket, string key, CancellationToken ct)

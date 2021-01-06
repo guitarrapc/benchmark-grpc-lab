@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,10 +47,9 @@ public class BenchmarkRunner : ConsoleAppBase
     /// Run Unary and Hub Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
-    /// <param name="iteration"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task Bench(string hostAddress = "http://localhost:5000", int iteration = 10000, string reportId = "")
+    public async Task BenchAll(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         if (string.IsNullOrEmpty(reportId))
             reportId = GetReportId();
@@ -59,51 +59,10 @@ public class BenchmarkRunner : ConsoleAppBase
         Context.Logger.LogInformation($"executeId: {executeId}");
 
         var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
+        var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         reporter.Begin();
         {
-            // Connect to the server using gRPC channel.
-            var channel = GrpcChannel.ForAddress(hostAddress);
-
-            // Unary
-            Context.Logger.LogInformation($"Begin unary {iteration} requests.");
-            var unary = new UnaryBenchmarkScenario(channel, reporter);
-            await unary.Run(iteration);
-
-            // StreamingHub
-            Context.Logger.LogInformation($"Begin Streaming {iteration} requests.");
-            await using var hub = new HubBenchmarkScenario(channel, reporter);
-            await hub.Run(iteration);
-        }
-        reporter.End();
-
-        // output
-        var benchJson = reporter.ToJson();
-
-        // put json to s3
-        var storage = StorageFactory.Create(Context.Logger);
-        await storage.Save(_path, $"reports/{reporter.ReportId}", reporter.GetJsonFileName(), benchJson, ct: Context.CancellationToken);
-    }
-
-    /// <summary>
-    /// Run Unary and Hub Benchmark
-    /// </summary>
-    /// <param name="hostAddress"></param>
-    /// <param name="reportId"></param>
-    /// <returns></returns>
-    public async Task BenchAll(string hostAddress = "http://localhost:5000", string reportId = "")
-    {
-        if (string.IsNullOrEmpty(reportId))
-            reportId = GetReportId();
-
-        var executeId = Guid.NewGuid().ToString();
-        Context.Logger.LogInformation($"reportId: {reportId}");
-        Context.Logger.LogInformation($"executeId: {executeId}");
-
-        var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
-        var iterations = new[] { 256, 1024, 4096, 16384, 20000 };
-        reporter.Begin();
-        {
-            foreach (var iteration in iterations)
+            foreach (var iteration in iterationInts)
             {
                 // Connect to the server using gRPC channel.
                 var channel = GrpcChannel.ForAddress(hostAddress);
@@ -135,7 +94,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="hostAddress"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string reportId = "")
+    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         if (string.IsNullOrEmpty(reportId))
             reportId = GetReportId();
@@ -145,10 +104,10 @@ public class BenchmarkRunner : ConsoleAppBase
         Context.Logger.LogInformation($"executeId: {executeId}");
 
         var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
-        var iterations = new[] { 256, 1024, 4096, 16384, 20000 };
+        var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         reporter.Begin();
         {
-            foreach (var iteration in iterations)
+            foreach (var iteration in iterationInts)
             {
                 // Connect to the server using gRPC channel.
                 var channel = GrpcChannel.ForAddress(hostAddress);
@@ -175,7 +134,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="hostAddress"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchHub(string hostAddress = "http://localhost:5000", string reportId = "")
+    public async Task BenchHub(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         if (string.IsNullOrEmpty(reportId))
             reportId = GetReportId();
@@ -185,10 +144,10 @@ public class BenchmarkRunner : ConsoleAppBase
         Context.Logger.LogInformation($"executeId: {executeId}");
 
         var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
-        var iterations = new[] { 256, 1024, 4096, 16384, 20000 };
+        var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         reporter.Begin();
         {
-            foreach (var iteration in iterations)
+            foreach (var iteration in iterationInts)
             {
                 // Connect to the server using gRPC channel.
                 var channel = GrpcChannel.ForAddress(hostAddress);
@@ -267,9 +226,9 @@ public class BenchmarkRunner : ConsoleAppBase
 
         // upload html report to s3
         var storage = StorageFactory.Create(Context.Logger);
-        await storage.Save(_path, $"html/{reportId}", htmlFileName, content, overwrite: true, Context.CancellationToken);
+        var outputUri = await storage.Save(_path, $"html/{reportId}", htmlFileName, content, overwrite: true, Context.CancellationToken);
 
-        Context.Logger.LogInformation($"https://{_path}.s3-ap-northeast-1.amazonaws.com/html/{reportId}/index.html");
+        Context.Logger.LogInformation($"HtmlReport Uri: {outputUri}");
     }
 
     public async Task<ClientInfo[]> ListClients()
@@ -282,7 +241,7 @@ public class BenchmarkRunner : ConsoleAppBase
         return clients;
     }
 
-    public async Task RunAllClient(int processCount, int executeCount = 10000, string benchCommand = "benchall", string hostAddress = "http://localhost:5000", string reportId = "")
+    public async Task RunAllClient(int processCount, string iterations = "256,1024,4096,16384", string benchCommand = "benchall", string hostAddress = "http://localhost:5000", string reportId = "")
     {
         if (string.IsNullOrEmpty(reportId))
             reportId = GetReportId();
@@ -293,7 +252,7 @@ public class BenchmarkRunner : ConsoleAppBase
         var loadTester = LoadTesterFactory.Create(Context.Logger, this);
         try
         {
-            await loadTester.Run(processCount, executeCount, benchCommand, hostAddress, reportId, Context.CancellationToken);
+            await loadTester.Run(processCount, iterations, benchCommand, hostAddress, reportId, Context.CancellationToken);
         }
         catch (Exception ex)
         {
