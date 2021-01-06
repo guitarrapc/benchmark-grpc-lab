@@ -149,7 +149,7 @@ namespace Benchmark.Client.LoadTester
             var command = new List<string> {
                 "#!/bin/bash",
                 "export DOTNET_CLI_HOME=/tmp",
-                $"BENCHCLIENT_RUNASWEB=false ~/client/Benchmark.Client benchmarkrunner {benchCommand} -hostAddress {hostAddress} -reportId {reportId} -iterations {iterations}"
+                $"BENCHCLIENT_RUNASWEB=false ~/client/Benchmark.Client benchmarkrunner {benchCommand} -hostAddress {hostAddress} -reportId {reportId} -iterations '{iterations}'"
             };
 
             // get target clients
