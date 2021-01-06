@@ -1,6 +1,7 @@
 using Benchmark.Server.Shared;
 using MagicOnion;
 using MessagePack;
+using System.Threading.Tasks;
 
 namespace Benchmark.Shared
 {

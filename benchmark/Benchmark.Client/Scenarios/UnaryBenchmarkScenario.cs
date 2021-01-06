@@ -65,6 +65,25 @@ namespace Benchmark.Client.Scenarios
 
         private async Task PlainTextAsync(int requestCount)
         {
+            for (var i = 0; i <= requestCount; i++)
+            {
+                var data = new BenchmarkData
+                {
+                    PlainText = i.ToString(),
+                };
+                try
+                {
+                    await client.PlainTextAsync(data);
+                }
+                catch (Exception)
+                {
+                    _errors++;
+                }
+            }
+        }
+
+        private async Task PlainTextAsyncParallel(int requestCount)
+        {
             var tasks = new List<UnaryResult<Nil>>();
             for (var i = 0; i <= requestCount; i++)
             {
