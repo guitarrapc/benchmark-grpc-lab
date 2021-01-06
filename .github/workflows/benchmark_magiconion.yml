@@ -2,7 +2,23 @@ name: benchmark_magiconion
 
 on:
   workflow_dispatch:
-
+    inputs:
+      benchcommand:
+        description: "command for bench"
+        required: true
+        default: "benchunary"
+      processcount:
+        description: "concurrent execute process count"
+        required: true
+        default: "5"
+      iterations:
+        description: "request count array to execute. (separate with ,)"
+        required: true
+        default: "256,1024,4096"
+      hostaddress:
+        description: "load testing target server address"
+        required: true
+        default: "http://localhost:80"
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -14,7 +30,11 @@ jobs:
       DISABLE_NETFX_TARGET_BUILD: 1
       DOTNET_SDK_VERSION_3: "3.1.403"
       DOTNET_SDK_VERSION_5: "5.0.100"
-      BUCKET: bench-magiconion-s3-bucket-5c7e45b
+      BENCH_BUCKET: bench-magiconion-s3-bucket-5c7e45b
+      BENCH_COMMAND: ${{ github.event.inputs.benchcommand }}
+      BENCH_PROCESSCOUNT: ${{ github.event.inputs.processcount }}
+      BENCH_ITERATIONS: ${{ github.event.inputs.iterations }}
+      BENCH_HOSTADDRESS: ${{ github.event.inputs.hostaddress }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-dotnet@v1
@@ -34,8 +54,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
-      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/server/ s3://${BUCKET}/assembly/linux/server/
-      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/client/ s3://${BUCKET}/assembly/linux/client/
+      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/server/ s3://${BENCH_BUCKET}/assembly/linux/server/
+      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/client/ s3://${BENCH_BUCKET}/assembly/linux/client/
       - name: update server binary
         run: |
           instanceId=$(aws ssm describe-instance-information --output json --filters Key=tag-key,Values=bench --filters=Key=PingStatus,Values=Online | jq -r ".InstanceInformationList[].InstanceId")
@@ -70,8 +90,6 @@ jobs:
 
             echo $output
           }
-          benchcommand=benchunary
-          processcount=5
-          iterations=$(urlencode "256,1024,4096")
-          hostaddress=$(urlencode "http://localhost:80")
-          curl -X POST "http://bench-magiconion-alb-0cad2c6-2132448848.ap-northeast-1.elb.amazonaws.com/BenchmarkRunner/RunAllClient" -H "accept: application/json" -H "Content-Type: application/x-www-form-urlencoded" -d "processCount=${processcount}&iterations=${iterations}&benchCommand=${benchcommand}&hostAddress=${hostaddress}" -H "x-accesstoken: ${{ secrets.ACCESSTOKEN}}"
+          iterations=$(urlencode "${{ env.BENCH_ITERATIONS }}")
+          hostaddress=$(urlencode "${{ env.BENCH_HOSTADDRESS }}")
+          curl -X POST "http://bench-magiconion-alb-0cad2c6-2132448848.ap-northeast-1.elb.amazonaws.com/BenchmarkRunner/RunAllClient" -H "accept: application/json" -H "Content-Type: application/x-www-form-urlencoded" -d "processCount=${{ env.BENCH_PROCESSCOUNT }}&iterations=${iterations}&benchCommand=${{ env.BENCH_COMMAND }}&hostAddress=${hostaddress}" -H "x-accesstoken: ${{ secrets.ACCESSTOKEN}}"
