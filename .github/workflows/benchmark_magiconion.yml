@@ -53,8 +53,11 @@ jobs:
       # run
       - run: sleep 30s
       - run: |
+          function urlencode {
+            echo "$1" | nkf -WwMQ | sed 's/=$//g' | tr = % | tr -d '\n'
+          }
           benchcommand=benchunary
           processcount=5
-          iterations=256%2C1024
-          hostaddress=http%3A%2F%2Flocalhost%3A80
+          iterations=$(urlencode "256,1024,4096")
+          hostaddress=$(urlencode "http://localhost:80")
           curl -X POST "http://bench-magiconion-alb-0cad2c6-2132448848.ap-northeast-1.elb.amazonaws.com/BenchmarkRunner/RunAllClient" -H "accept: application/json" -H "Content-Type: application/x-www-form-urlencoded" -d "processCount=${processcount}&iterations=${iterations}&benchCommand=${benchcommand}&hostAddress=${hostaddress}" -H "x-accesstoken: ${{ secrets.ACCESSTOKEN}}"
