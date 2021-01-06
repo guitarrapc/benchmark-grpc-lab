@@ -53,8 +53,22 @@ jobs:
       # run
       - run: sleep 30s
       - run: |
-          function urlencode {
-            echo "$1" | nkf -WwMQ | sed 's/=$//g' | tr = % | tr -d '\n'
+          #!/bin/bash -e
+          function urlencode() {
+            local input="${1}"
+            local output=""
+            local i=0
+            for (( i=0 ; i<${#input} ; i++ )); do
+              local o=""
+              local c=${input:$i:1}
+              case "$c" in 
+                  [-_.~a-zA-Z0-9] ) o="${c}" ;;
+                  * ) printf -v o '%%%02x' "'$c"
+              esac
+              output+=$o
+            done
+
+            echo $output
           }
           benchcommand=benchunary
           processcount=5
