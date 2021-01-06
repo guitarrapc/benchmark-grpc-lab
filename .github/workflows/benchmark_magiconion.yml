@@ -14,7 +14,7 @@ on:
       iterations:
         description: "request count array to execute. (separate with ,)"
         required: true
-        default: "256,1024,4096"
+        default: "256,1024,4096,16384"
       hostaddress:
         description: "load testing target server address"
         required: true
