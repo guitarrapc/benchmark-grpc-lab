@@ -4,6 +4,7 @@ using Benchmark.Client.LoadTester;
 using Benchmark.Client.Reports;
 using Benchmark.Client.Scenarios;
 using Benchmark.Client.Storage;
+using Benchmark.Client.Utils;
 using ConsoleAppFramework;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Hosting;
@@ -263,11 +264,38 @@ public class BenchmarkRunner : ConsoleAppBase
         await GenerateHtml(reportId);
     }
 
-    public async Task UpdateServerBinary()
+    public async Task CancelCommands(string status = "InProgress")
     {
-        // todo: call ssm to update server binary
-        // todo: start server via ssm
-        throw new NotImplementedException();
+        var config = AmazonUtils.IsAmazonEc2()
+            ? new Amazon.SimpleSystemsManagement.AmazonSimpleSystemsManagementConfig
+            {
+                RegionEndpoint = Amazon.Util.EC2InstanceMetadata.Region,
+            }
+            : new Amazon.SimpleSystemsManagement.AmazonSimpleSystemsManagementConfig
+            {
+                RegionEndpoint = Amazon.RegionEndpoint.APNortheast1,
+            };
+        var client = new Amazon.SimpleSystemsManagement.AmazonSimpleSystemsManagementClient(config);
+        var commands = await client.ListCommandInvocationsAsync(new Amazon.SimpleSystemsManagement.Model.ListCommandInvocationsRequest
+        {
+            Filters = new List<Amazon.SimpleSystemsManagement.Model.CommandFilter>
+                {
+                    new Amazon.SimpleSystemsManagement.Model.CommandFilter
+                    {
+                        Key = "Status",
+                        Value = status,
+                    }
+                },            
+        }, Context.CancellationToken);
+
+        foreach (var command in commands.CommandInvocations)
+        {
+            Context.Logger.LogInformation($"Cancelling {command.CommandId}");
+            await client.CancelCommandAsync(new Amazon.SimpleSystemsManagement.Model.CancelCommandRequest
+            {
+                CommandId = command.CommandId,
+            }, Context.CancellationToken);
+        }
     }
 
     private static string NormalizeNewLine(string content)
