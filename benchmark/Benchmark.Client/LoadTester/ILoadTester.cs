@@ -8,7 +8,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -100,7 +99,6 @@ namespace Benchmark.Client.LoadTester
                 {
                     tasks.Add(task);
                 }
-                //var task = _runner.BenchAll(hostAddress, reportId: reportId);
             }
             await Task.WhenAll(tasks);
         }

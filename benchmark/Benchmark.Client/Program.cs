@@ -264,7 +264,7 @@ public class BenchmarkRunner : ConsoleAppBase
         await GenerateHtml(reportId);
     }
 
-    public async Task CancelCommands(string status = "InProgress")
+    public async Task CancelCommands()
     {
         var config = AmazonUtils.IsAmazonEc2()
             ? new Amazon.SimpleSystemsManagement.AmazonSimpleSystemsManagementConfig
@@ -283,7 +283,7 @@ public class BenchmarkRunner : ConsoleAppBase
                     new Amazon.SimpleSystemsManagement.Model.CommandFilter
                     {
                         Key = "Status",
-                        Value = status,
+                        Value = "InProgress",
                     }
                 },            
         }, Context.CancellationToken);
