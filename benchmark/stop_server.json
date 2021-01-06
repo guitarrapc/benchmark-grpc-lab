@@ -1,0 +1,8 @@
+{
+  "Parameters": {
+    "commands": [
+      "#!/bin/bash",
+      "sudo systemctl stop Benchmark.Server"
+    ]
+  }
+}
