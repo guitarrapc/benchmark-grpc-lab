@@ -15,6 +15,7 @@ namespace Cdk
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
+                    { "cf-stack", "MagicOnionBenchmarkCdkStack" },
                 },
             });
             app.Synth();

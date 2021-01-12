@@ -17,9 +17,9 @@ namespace Cdk
         internal CdkStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
         {
             var logGroup = "MagicOnionBenchWorkerLogGroup";
-            var vpc = new Vpc(this, "MagicOnionBenchVpc", new VpcProps { MaxAzs = 2 });
+            var vpc = new Vpc(this, "Vpc", new VpcProps { MaxAzs = 2 });
             var subnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE };
-            var sg = new SecurityGroup(this, "MagicOnionBenchMasterSg", new SecurityGroupProps
+            var sg = new SecurityGroup(this, "MasterSg", new SecurityGroupProps
             {
                 AllowAllOutbound = true,
                 Vpc = vpc,
@@ -27,7 +27,7 @@ namespace Cdk
             foreach (var subnet in vpc.PrivateSubnets)
                 sg.AddIngressRule(Peer.Ipv4(subnet.Ipv4CidrBlock), Port.AllTcp(), "VPC", true);
 
-            var s3 = new Bucket(this, "MagicOnionBenchBucket", new BucketProps
+            var s3 = new Bucket(this, "Bucket", new BucketProps
             {
                 AutoDeleteObjects = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
@@ -45,7 +45,7 @@ namespace Cdk
             var iamWorkerTaskDefRole = IamWorkerTaskDef(s3);
 
             // master
-            var asg = new AutoScalingGroup(this, "MagicOnionBenchMasterAsg", new AutoScalingGroupProps
+            var asg = new AutoScalingGroup(this, "MasterAsg", new AutoScalingGroupProps
             {
                 SpotPrice = "0.01", // 0.0096 for spot price average
                 Vpc = vpc,
@@ -77,12 +77,11 @@ sudo systemctl restart Benchmark.Server
             asg.Node.AddDependency(masterDllDeployment);
 
             // worker
-            var cluster = new Cluster(this, "MagicOnionBenchWorkerCluster", new ClusterProps
+            var cluster = new Cluster(this, "WorkerCluster", new ClusterProps
             {
-                ClusterName = "MagicOnionBenchWorkerCluster",
                 Vpc = vpc,
             });
-            var taskDef = new FargateTaskDefinition(this, "MagicOnionBenchWorkerTaskDef", new FargateTaskDefinitionProps
+            var taskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
             {
                 ExecutionRole = iamWorkerTaskExecuteRole,
                 TaskRole = iamWorkerTaskDefRole,
@@ -96,12 +95,12 @@ sudo systemctl restart Benchmark.Server
                 Environment = new Dictionary<string, string>
                 {
                     { "BENCHCLIENT_RUNASWEB", "true" },
-                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
+                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:8080" },
                     { "BENCHCLIENT_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
                 {
-                    LogGroup = new LogGroup(this, "MagicOnionBenchWorkerLogGroup", new LogGroupProps
+                    LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
                     {
                         LogGroupName = logGroup,
                         RemovalPolicy = RemovalPolicy.DESTROY,
@@ -111,13 +110,12 @@ sudo systemctl restart Benchmark.Server
                 }),
             }).AddPortMappings(new PortMapping
             {
-                ContainerPort = 80,
-                HostPort = 80,
+                ContainerPort = 8080,
+                HostPort = 8080,
                 Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
             });
-            var service = new ApplicationLoadBalancedFargateService(this, "MagicOnionBenchWorkerService", new ApplicationLoadBalancedFargateServiceProps
+            var service = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
             {
-                ServiceName = "MagicOnionBenchWorkerService",
                 TaskSubnets = subnets,
                 Cluster = cluster,
                 TaskDefinition = taskDef,
@@ -128,7 +126,6 @@ sudo systemctl restart Benchmark.Server
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
             });
 
-            new CfnOutput(this, "S3BucketName", new CfnOutputProps { Value = s3.BucketName });
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
             new CfnOutput(this, "EcsServiceName", new CfnOutputProps { Value = service.Service.ServiceName });
             new CfnOutput(this, "EcsTaskdefArn", new CfnOutputProps { Value = service.TaskDefinition.TaskDefinitionArn });
@@ -136,7 +133,7 @@ sudo systemctl restart Benchmark.Server
 
         private Role IamMaster(Bucket s3)
         {
-            var policy = new Policy(this, "MagicOnionBenchMasterPolicy", new PolicyProps
+            var policy = new Policy(this, "MasterPolicy", new PolicyProps
             {
                 Statements = new[]
                 {
@@ -157,7 +154,7 @@ sudo systemctl restart Benchmark.Server
                     }),
                 }
             });
-            var role = new Role(this, "MagicOnionBenchMasterRole", new RoleProps
+            var role = new Role(this, "MasterRole", new RoleProps
             {
                 AssumedBy = new ServicePrincipal("ec2.amazonaws.com"),
             });
@@ -167,7 +164,7 @@ sudo systemctl restart Benchmark.Server
 
         private Role IamWorkerTaskExecute(string logGroup)
         {
-            var policy = new Policy(this, "MagicOnionBenchWorkerTaskDefExecutionPolicy", new PolicyProps
+            var policy = new Policy(this, "WorkerTaskDefExecutionPolicy", new PolicyProps
             {
                 Statements = new[]
                 {
@@ -183,7 +180,7 @@ sudo systemctl restart Benchmark.Server
                     }),
                 }
             });
-            var role = new Role(this, "MagicOnionBenchWorkerTaskDefExecutionRole", new RoleProps
+            var role = new Role(this, "WorkerTaskDefExecutionRole", new RoleProps
             {
                 AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             });
@@ -193,7 +190,7 @@ sudo systemctl restart Benchmark.Server
 
         private Role IamWorkerTaskDef(Bucket s3)
         {
-            var policy = new Policy(this, "MagicOnionBenchWorkerTaskDefTaskPolicy", new PolicyProps
+            var policy = new Policy(this, "WorkerTaskDefTaskPolicy", new PolicyProps
             {
                 Statements = new[]
                 {
@@ -221,7 +218,7 @@ sudo systemctl restart Benchmark.Server
                     }),
                 }
             });
-            var role = new Role(this, "MagicOnionBenchWorkerTaskDefTaskRole", new RoleProps
+            var role = new Role(this, "WorkerTaskDefTaskRole", new RoleProps
             {
                 AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             });
