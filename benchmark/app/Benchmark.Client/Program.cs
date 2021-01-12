@@ -39,7 +39,7 @@ public class BenchmarkRunner : ConsoleAppBase
     private readonly string _path;
     public BenchmarkRunner()
     {
-        _path = Environment.GetEnvironmentVariable("BENCHCLIENT_S3BUCKET") ?? "bench-magiconion-s3-bucket-5c7e45b";
+        _path = Environment.GetEnvironmentVariable("BENCHCLIENT_S3BUCKET") ?? throw new ArgumentNullException("Environment variable 'BENCHCLIENT_S3BUCKET' is not defined.");
     }
 
     private string GetReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();

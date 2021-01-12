@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30711.63
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.Client", "Benchmark.Client\Benchmark.Client.csproj", "{E3DDD0C4-0159-4F78-A6BC-C6BB5E37E660}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.Client", "app\Benchmark.Client\Benchmark.Client.csproj", "{E3DDD0C4-0159-4F78-A6BC-C6BB5E37E660}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.Server", "Benchmark.Server\Benchmark.Server.csproj", "{D7E2E088-B521-4A6C-890C-B524B9DA9D5A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmark.Server", "app\Benchmark.Server\Benchmark.Server.csproj", "{D7E2E088-B521-4A6C-890C-B524B9DA9D5A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DFrame.Ecs", "DFrame.Ecs\DFrame.Ecs.csproj", "{76E3177C-97DB-4C37-B37E-431BDA199722}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DFrame.Ecs", "app\DFrame.Ecs\DFrame.Ecs.csproj", "{76E3177C-97DB-4C37-B37E-431BDA199722}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cdk", "Cdk\Cdk.csproj", "{109E4C9F-4CBA-4B06-8814-8D3B9EE05785}"
 EndProject

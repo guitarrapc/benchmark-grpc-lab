@@ -22,6 +22,5 @@
 **/secrets.dev.yaml
 **/values.dev.yaml
 out/
-cdk.out/
 LICENSE
 README.md

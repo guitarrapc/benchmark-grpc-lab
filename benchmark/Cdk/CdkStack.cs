@@ -7,6 +7,7 @@ using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Deployment;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Cdk
@@ -88,11 +89,16 @@ sudo systemctl restart Benchmark.Server
             });
             taskDef.AddContainer("worker", new ContainerDefinitionOptions
             {
-                Image = ContainerImage.FromAsset(Directory.GetCurrentDirectory(), new AssetImageProps
+                Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
                 {
                     File = "Benchmark.Client/Dockerfile",
                 }),
-                //Image = ContainerImage.FromRegistry("amazon/amazon-ecs-sample"),
+                Environment = new Dictionary<string, string>
+                {
+                    { "BENCHCLIENT_RUNASWEB", "true" },
+                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
+                    { "BENCHCLIENT_S3BUCKET", s3.BucketName },
+                },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
                 {
                     LogGroup = new LogGroup(this, "MagicOnionBenchWorkerLogGroup", new LogGroupProps
@@ -171,7 +177,7 @@ sudo systemctl restart Benchmark.Server
                         Actions = new[]
                         {
                             "logs:CreateLogStream",
-                            "logs:PutLogEvents" 
+                            "logs:PutLogEvents"
                         },
                         Resources = new[] { $"arn:aws:logs:{this.Region}:{this.Account}:log-group:{logGroup}:*" },
                     }),

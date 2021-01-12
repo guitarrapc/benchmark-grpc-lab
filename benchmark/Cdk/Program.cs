@@ -10,7 +10,7 @@ namespace Cdk
         public static void Main(string[] args)
         {
             var app = new App();
-            new CdkStack(app, "CdkStack", new StackProps
+            new CdkStack(app, "MagicOnionBenchmarkCdkStack", new StackProps
             {
                 Tags = new Dictionary<string, string>()
                 {
