@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DFrame.Ecs", "app\DFrame.Ec
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cdk", "Cdk\Cdk.csproj", "{109E4C9F-4CBA-4B06-8814-8D3B9EE05785}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "app", "app", "{755D7C3A-E554-4F6F-BDB4-DD4746364606}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +38,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E3DDD0C4-0159-4F78-A6BC-C6BB5E37E660} = {755D7C3A-E554-4F6F-BDB4-DD4746364606}
+		{D7E2E088-B521-4A6C-890C-B524B9DA9D5A} = {755D7C3A-E554-4F6F-BDB4-DD4746364606}
+		{76E3177C-97DB-4C37-B37E-431BDA199722} = {755D7C3A-E554-4F6F-BDB4-DD4746364606}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {87A3507E-81C2-4CF6-A751-1DAB7DBD5BCF}

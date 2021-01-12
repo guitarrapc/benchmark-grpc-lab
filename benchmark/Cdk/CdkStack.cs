@@ -95,7 +95,7 @@ sudo systemctl restart Benchmark.Server
                 Environment = new Dictionary<string, string>
                 {
                     { "BENCHCLIENT_RUNASWEB", "true" },
-                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:8080" },
+                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
                     { "BENCHCLIENT_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -110,8 +110,8 @@ sudo systemctl restart Benchmark.Server
                 }),
             }).AddPortMappings(new PortMapping
             {
-                ContainerPort = 8080,
-                HostPort = 8080,
+                ContainerPort = 80,
+                HostPort = 80,
                 Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
             });
             var service = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
