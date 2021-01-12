@@ -6,10 +6,10 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
 WORKDIR /src
-COPY ["benchmark/Benchmark.Server/Benchmark.Server.csproj", "benchmark/Benchmark.Server/"]
-RUN dotnet restore "benchmark/Benchmark.Server/Benchmark.Server.csproj"
+COPY ["Benchmark.Server/Benchmark.Server.csproj", "Benchmark.Server/"]
+RUN dotnet restore "Benchmark.Server/Benchmark.Server.csproj"
 COPY . .
-WORKDIR "/src/benchmark/Benchmark.Server"
+WORKDIR "/src/Benchmark.Server"
 RUN dotnet build "Benchmark.Server.csproj" -c Release -o /app/build
 
 FROM build AS publish

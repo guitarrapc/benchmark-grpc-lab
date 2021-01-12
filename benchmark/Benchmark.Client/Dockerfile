@@ -5,10 +5,10 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
 WORKDIR /src
-COPY ["benchmark/Benchmark.Client/Benchmark.Client.csproj", "benchmark/Benchmark.Client/"]
-RUN dotnet restore "benchmark/Benchmark.Client/Benchmark.Client.csproj"
+COPY ["Benchmark.Client/Benchmark.Client.csproj", "Benchmark.Client/"]
+RUN dotnet restore "Benchmark.Client/Benchmark.Client.csproj"
 COPY . .
-WORKDIR "/src/benchmark/Benchmark.Client"
+WORKDIR "/src/Benchmark.Client"
 RUN dotnet build "Benchmark.Client.csproj" -c Release -o /app/build
 
 FROM build AS publish
