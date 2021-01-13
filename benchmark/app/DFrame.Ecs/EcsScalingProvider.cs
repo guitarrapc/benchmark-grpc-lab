@@ -4,18 +4,8 @@ using System.Threading.Tasks;
 
 namespace DFrame.Ecs
 {
-    public enum EcsScalingType
-    {
-        Fargate = 0,
-        Ec2,
-    }
-
     public class EcsEnvironment
     {
-        /// <summary>
-        /// Worker scaling type
-        /// </summary>
-        public EcsScalingType ScalingType { get; set; } = EcsScalingType.Fargate;
         /// <summary>
         /// Worker ECS cluster name.
         /// </summary>
@@ -27,7 +17,11 @@ namespace DFrame.Ecs
         /// <summary>
         /// Worker ECS task name.
         /// </summary>
-        public string TaskName { get; set; } = Environment.GetEnvironmentVariable("DFRAME_WORKER_TASK_NAME") ?? "dframe-worker-task";
+        public string TaskDefinitionName { get; set; } = Environment.GetEnvironmentVariable("DFRAME_WORKER_TASK_NAME") ?? "dframe-worker-task";
+        /// <summary>
+        /// Worker ECS task container name.
+        /// </summary>
+        public string ContainerName { get; set; } = Environment.GetEnvironmentVariable("DFRAME_WORKER_CONTAINER_NAME") ?? "worker";
         /// <summary>
         /// Image Tag for Worker Image.
         /// </summary>
@@ -52,8 +46,10 @@ namespace DFrame.Ecs
 
     public class EcsScalingProvider : IScalingProvider
     {
-        private readonly EcsEnvironment _env;
         IFailSignal _failSignal = default!;
+
+        private readonly EcsEnvironment _env;
+        private readonly EcsService _ecsService;
 
         public EcsScalingProvider() : this(new EcsEnvironment())
         {
@@ -61,25 +57,54 @@ namespace DFrame.Ecs
         public EcsScalingProvider(EcsEnvironment env)
         {
             _env = env;
+            _ecsService = new EcsService(_env.ClusterName, _env.ServiceName, _env.TaskDefinitionName, _env.ContainerName);
         }
 
-        public Task StartWorkerAsync(DFrameOptions options, int processCount, IServiceProvider provider, IFailSignal failSignal, CancellationToken cancellationToken)
+        public async Task StartWorkerAsync(DFrameOptions options, int processCount, IServiceProvider provider, IFailSignal failSignal, CancellationToken cancellationToken)
         {
             _failSignal = failSignal;
 
-            Console.WriteLine($"scale out workers {_env.ScalingType}. {_env.TaskName}@{_env.ClusterName}/{_env.ServiceName} ({processCount} tasks)");
-            // todo: confirm Cluster Exists or create
-            // todo: confirm Service Exists or create
-            // todo: create task for desired parameter
-            // todo: create task on cluster/service
-            // todo: check task creation is complete
+            Console.WriteLine($"scale out {processCount} workers for {_ecsService.TaskDefinitionName}@{_ecsService.ClusterName}/{_ecsService.ServiceName}");
 
-            throw new NotImplementedException();
+            Console.WriteLine($"checking ECS Cluster is ready.");
+            if (!await _ecsService.ExistsClusterAsync())
+            {
+                _failSignal.TrySetException(new EcsException($"ECS Cluster not found. Please confirm provided name {nameof(_ecsService.ClusterName)} is valid."));
+                return;
+            }
+            if (!await _ecsService.ExistsServiceAsync())
+            {
+                _failSignal.TrySetException(new EcsException($"ECS Service not found in ECS Cluster {_ecsService.ClusterName}. Please confirm provided name {nameof(_ecsService.ServiceName)} is valid."));
+                return;
+            }
+            if (!await _ecsService.ExistsTaskDefinitionAsync())
+            {
+                _failSignal.TrySetException(new EcsException($"ECS TaskDefinition not found. Please confirm provided name {nameof(_ecsService.TaskDefinitionName)} is valid."));
+                return;
+            }
+
+            using (var cts = new CancellationTokenSource(_env.WorkerTaskCreationTimeout * 1000))
+            {
+                // create task for desired parameter
+                var updatedTaskDefinition = await _ecsService.UpdateTaskDefinitionImageAsync(_env.Image, _env.ImageTag);
+
+                // deploy new task
+                await _ecsService.RollingServiceDeploymentAsync(updatedTaskDefinition.TaskRevision, processCount);
+            }
         }
 
-        public ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"scale in workers for {_ecsService.TaskDefinitionName}@{_ecsService.ClusterName}/{_ecsService.ServiceName}");
+            if (!_env.PreserveWorker)
+            {
+                using var cts = new CancellationTokenSource(120 * 1000);
+                await _ecsService.ScaleServiceAsync(0, cts.Token);
+            }
+            else
+            {
+                Console.WriteLine($"detected preserve worker, scale in action skipped.");
+            }
         }
     }
 }
