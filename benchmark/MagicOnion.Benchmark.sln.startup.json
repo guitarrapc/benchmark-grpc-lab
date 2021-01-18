@@ -57,6 +57,12 @@
         "Benchmark.Server": {},
         "Benchmark.Client": {}
       }
+    },
+    "BenchServer + BenchClientWeb": {
+      "Projects": {
+        "Benchmark.Server": {},
+        "Benchmark.Web": {}
+      }
     }
   }
 }

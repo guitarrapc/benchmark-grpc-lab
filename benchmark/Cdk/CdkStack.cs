@@ -40,12 +40,13 @@ namespace Cdk
                 Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "out/linux/server/")) },
                 DestinationKeyPrefix = "assembly/linux/server/"
             });
-            var iamMasterRole = IamMaster(s3);
-            var iamWorkerTaskExecuteRole = IamWorkerTaskExecute(logGroup);
-            var iamWorkerTaskDefRole = IamWorkerTaskDef(s3);
+            var iamMasterRole = GetIamMasterRole(s3);
+            var iamWorkerTaskExecuteRole = GetIamWorkerTaskExecuteRole(logGroup);
+            var iamDFrameTaskDefRole = GetIamDframeTaskDefRole();
+            var iamWorkerTaskDefRole = GetIamWorkerTaskDefRole(s3);
 
-            // master
-            var asg = new AutoScalingGroup(this, "MasterAsg", new AutoScalingGroupProps
+            // MagicOnion
+            var asg = new AutoScalingGroup(this, "MagicOnionAsg", new AutoScalingGroupProps
             {
                 SpotPrice = "0.01", // 0.0096 for spot price average
                 Vpc = vpc,
@@ -81,12 +82,12 @@ sudo systemctl restart Benchmark.Server
             {
                 Vpc = vpc,
             });
-            var taskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
+            var workerTaskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
             {
                 ExecutionRole = iamWorkerTaskExecuteRole,
                 TaskRole = iamWorkerTaskDefRole,
             });
-            taskDef.AddContainer("worker", new ContainerDefinitionOptions
+            workerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
             {
                 Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
                 {
@@ -114,11 +115,11 @@ sudo systemctl restart Benchmark.Server
                 HostPort = 80,
                 Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
             });
-            var service = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
+            var workerService = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
             {
                 TaskSubnets = subnets,
                 Cluster = cluster,
-                TaskDefinition = taskDef,
+                TaskDefinition = workerTaskDef,
                 DesiredCount = 1,
                 Cpu = 256,
                 MemoryLimitMiB = 512,
@@ -126,12 +127,53 @@ sudo systemctl restart Benchmark.Server
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
             });
 
+            // dframe
+            var dframeTaskDef = new FargateTaskDefinition(this, "DFrameTaskDef", new FargateTaskDefinitionProps
+            {
+                ExecutionRole = iamWorkerTaskExecuteRole,
+                TaskRole = iamDFrameTaskDefRole,
+            });
+            dframeTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
+            {
+                Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
+                {
+                    File = "DFrameWorker/Dockerfile",
+                }),
+                Environment = new Dictionary<string, string>
+                {
+                    { "DFRAME_WORKER_CLUSTER_NAME", cluster.ClusterName },
+                    { "DFRAME_WORKER_SERVICE_NAME", workerService.Service.ServiceName },
+                    { "DFRAME_WORKER_TASK_NAME", Token.AsString(workerService.TaskDefinition.TaskDefinitionArn) },
+                    { "DFRAME_WORKER_CONTAINER_NAME", "worker" },
+                    { "DFRAME_WORKER_IMAGE_TAG", s3.BucketName },
+                    { "DFRAME_WORKER_IMAGE_NAME", s3.BucketName },
+                },
+                Logging = LogDriver.AwsLogs(new AwsLogDriverProps
+                {
+                    LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
+                    {
+                        LogGroupName = logGroup,
+                        RemovalPolicy = RemovalPolicy.DESTROY,
+                        Retention = RetentionDays.TWO_WEEKS,
+                    }),
+                    StreamPrefix = logGroup,
+                }),
+            }).AddPortMappings(new PortMapping
+            {
+                ContainerPort = 80,
+                HostPort = 80,
+                Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
+            });
+
+            var taskFamilyRevision = Fn.Select(1, Fn.Split("/", workerService.TaskDefinition.TaskDefinitionArn));
+            var taskName = Fn.Select(0, Fn.Split(":", taskFamilyRevision));
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
-            new CfnOutput(this, "EcsServiceName", new CfnOutputProps { Value = service.Service.ServiceName });
-            new CfnOutput(this, "EcsTaskdefArn", new CfnOutputProps { Value = service.TaskDefinition.TaskDefinitionArn });
+            new CfnOutput(this, "EcsServiceName", new CfnOutputProps { Value = workerService.Service.ServiceName });
+            new CfnOutput(this, "EcsTaskdefArn", new CfnOutputProps { Value = workerService.TaskDefinition.TaskDefinitionArn });
+            new CfnOutput(this, "EcsTaskdefName", new CfnOutputProps { Value = taskName });
         }
 
-        private Role IamMaster(Bucket s3)
+        private Role GetIamMasterRole(Bucket s3)
         {
             var policy = new Policy(this, "MasterPolicy", new PolicyProps
             {
@@ -161,8 +203,7 @@ sudo systemctl restart Benchmark.Server
             role.AttachInlinePolicy(policy);
             return role;
         }
-
-        private Role IamWorkerTaskExecute(string logGroup)
+        private Role GetIamWorkerTaskExecuteRole(string logGroup)
         {
             var policy = new Policy(this, "WorkerTaskDefExecutionPolicy", new PolicyProps
             {
@@ -185,10 +226,43 @@ sudo systemctl restart Benchmark.Server
                 AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             });
             role.AttachInlinePolicy(policy);
+            role.AddManagedPolicy(ManagedPolicy.FromManagedPolicyArn(this, "WorkerECSTaskExecutionRolePolicy", "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
             return role;
         }
 
-        private Role IamWorkerTaskDef(Bucket s3)
+        private Role GetIamDframeTaskDefRole()
+        {
+            var policy = new Policy(this, "DframeTaskDefTaskPolicy", new PolicyProps
+            {
+                Statements = new[]
+                {
+                    // ecs
+                    new PolicyStatement(new PolicyStatementProps
+                    {
+                        Actions = new[] 
+                        {
+                            "ecs:Describe*",
+                            "ecs:List*",
+                            "ecs:Update*",
+                            "ecs:DiscoverPollEndpoint",
+                            "ecs:Poll",
+                            "ecs:RegisterContainerInstance",
+                            "ecs:StartTelemetrySession",
+                            "ecs:UpdateContainerInstancesState",
+                            "ecs:Submit*",
+                        },
+                        Resources = new[] { "*" },
+                    }),
+                }
+            });
+            var role = new Role(this, "DframeTaskDefTaskRole", new RoleProps
+            {
+                AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
+            });
+            role.AttachInlinePolicy(policy);
+            return role;
+        }
+        private Role GetIamWorkerTaskDefRole(Bucket s3)
         {
             var policy = new Policy(this, "WorkerTaskDefTaskPolicy", new PolicyProps
             {
@@ -222,7 +296,6 @@ sudo systemctl restart Benchmark.Server
             {
                 AssumedBy = new ServicePrincipal("ecs-tasks.amazonaws.com"),
             });
-            role.AddManagedPolicy(ManagedPolicy.FromManagedPolicyArn(this, "ECSTaskExecutionRolePolicy", "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
             role.AttachInlinePolicy(policy);
             return role;
         }
