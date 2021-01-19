@@ -1,4 +1,5 @@
 using Amazon.CDK;
+using Amazon.CDK.AWS.AppMesh;
 using Amazon.CDK.AWS.AutoScaling;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.Ecr.Assets;
@@ -7,6 +8,7 @@ using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Deployment;
+using Amazon.CDK.AWS.ServiceDiscovery;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +20,12 @@ namespace Cdk
     {
         internal CdkStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
         {
+            var reportId = props switch
+            {
+                ReportStackProps r => r.ReportId,
+                StackProps _ => Guid.NewGuid().ToString(),
+                _ => throw new NotImplementedException(),
+            };
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
@@ -38,6 +46,14 @@ namespace Cdk
                 AccessControl = BucketAccessControl.PRIVATE,
                 Versioned = true,
             });
+            s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
+            {
+                Sid = "AllowPublicRead",
+                Effect = Effect.ALLOW,
+                Principals = new[] { new AnyPrincipal()},
+                Actions = new[] { "s3:GetObject*" },
+                Resources = new[] { $"{s3.BucketArn}/html/*" },
+            }));
             var masterDllDeployment = new BucketDeployment(this, "DeployMasterDll", new BucketDeploymentProps
             {
                 DestinationBucket = s3,
@@ -81,55 +97,23 @@ sudo systemctl restart Benchmark.Server
 ".Replace("\r\n", "\n"));
             asg.Node.AddDependency(masterDllDeployment);
 
-            // worker
+            // AppMesh
+            var mesh = new Mesh(this, "Mesh", new MeshProps
+            {
+                EgressFilter = MeshFilterType.ALLOW_ALL,
+            });
+            var ns = new PrivateDnsNamespace(this, "Namespace", new PrivateDnsNamespaceProps
+            {
+                Vpc = vpc,
+                Name = "local",
+            });
+            ns.CreateService("app");
+
+            // ECS
             var cluster = new Cluster(this, "WorkerCluster", new ClusterProps
             {
                 Vpc = vpc,
             });
-            //var workerTaskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
-            //{
-            //    ExecutionRole = iamWorkerTaskExecuteRole,
-            //    TaskRole = iamWorkerTaskDefRole,
-            //});
-            //workerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
-            //{
-            //    Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
-            //    {
-            //        File = "Benchmark.Client/Dockerfile",
-            //    }),
-            //    Environment = new Dictionary<string, string>
-            //    {
-            //        { "BENCHCLIENT_RUNASWEB", "true" },
-            //        { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
-            //        { "BENCHCLIENT_S3BUCKET", s3.BucketName },
-            //    },
-            //    Logging = LogDriver.AwsLogs(new AwsLogDriverProps
-            //    {
-            //        LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
-            //        {
-            //            LogGroupName = logGroup,
-            //            RemovalPolicy = RemovalPolicy.DESTROY,
-            //            Retention = RetentionDays.TWO_WEEKS,
-            //        }),
-            //        StreamPrefix = logGroup,
-            //    }),
-            //}).AddPortMappings(new PortMapping
-            //{
-            //    ContainerPort = 80,
-            //    HostPort = 80,
-            //    Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
-            //});
-            //var workerService = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
-            //{
-            //    TaskSubnets = subnets,
-            //    Cluster = cluster,
-            //    TaskDefinition = workerTaskDef,
-            //    DesiredCount = 1,
-            //    Cpu = 256,
-            //    MemoryLimitMiB = 512,
-            //    PublicLoadBalancer = true,
-            //    PlatformVersion = FargatePlatformVersion.VERSION1_4,
-            //});
 
             // dframe-worker
             var dframeWorkerContainerName = "worker";
@@ -152,8 +136,10 @@ sudo systemctl restart Benchmark.Server
                 Command = new[] { "--worker-flag" },
                 Environment = new Dictionary<string, string>
                 {
-                    { "BENCH_SERVER_HOST", "10.0.148.185" },
-                    { "BENCH_REPORTID", Guid.NewGuid().ToString() },
+                    { "DFRAME_MASTER_CONNECT_TO_HOST", "dframe-master.local"},
+                    { "DFRAME_MASTER_CONNECT_TO_PORT", "12345"},
+                    { "BENCH_SERVER_HOST", "http://10.0.178.167" },
+                    { "BENCH_REPORTID", reportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -174,7 +160,8 @@ sudo systemctl restart Benchmark.Server
                 TaskDefinition = dframeWorkerTaskDef,
                 VpcSubnets = subnets,
                 SecurityGroups = new[] { sg },
-                PlatformVersion = FargatePlatformVersion.VERSION1_4,                
+                PlatformVersion = FargatePlatformVersion.VERSION1_4,
+                MinHealthyPercent = 0,                
             });
 
             // dframe-master
@@ -190,6 +177,7 @@ sudo systemctl restart Benchmark.Server
                 Image = dframeImage,                
                 Environment = new Dictionary<string, string>
                 {
+                    { "DFRAME_MASTER_SERVICE_NAME", "DFrameMasterService" },
                     { "DFRAME_WORKER_CONTAINER_NAME", dframeWorkerContainerName },
                     { "DFRAME_WORKER_CLUSTER_NAME", cluster.ClusterName },
                     { "DFRAME_WORKER_SERVICE_NAME", dframeWorkerService.ServiceName },
@@ -209,12 +197,21 @@ sudo systemctl restart Benchmark.Server
             });
             var dframeMasterService = new FargateService(this, "DFrameMasterService", new FargateServiceProps
             {
+                ServiceName = "DFrameMasterService",
                 DesiredCount = 1,
                 Cluster = cluster,
                 TaskDefinition = dframeMasterTaskDef,
                 VpcSubnets = subnets,
                 SecurityGroups = new[] { sg },
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
+                MinHealthyPercent = 0,
+                CloudMapOptions = new CloudMapOptions
+                {
+                    CloudMapNamespace = ns,
+                    Name = "dframe-master",
+                    DnsRecordType = DnsRecordType.A,
+                    DnsTtl = Duration.Seconds(300),
+                },
             });
 
             // output

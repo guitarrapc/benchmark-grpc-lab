@@ -15,6 +15,12 @@ It uses the [.NET Core CLI](https://docs.microsoft.com/dotnet/articles/core/) to
 
 ## Step to create
 
+install cdk cli.
+
+```shell
+npm install -g aws-cdk
+```
+
 ```shell
 dotnet build src
 cdk synth

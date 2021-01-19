@@ -10,8 +10,9 @@ namespace Cdk
         public static void Main(string[] args)
         {
             var app = new App();
-            new CdkStack(app, "MagicOnionBenchmarkCdkStack", new StackProps
+            new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
+                ReportId = Guid.NewGuid().ToString(),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
@@ -20,5 +21,10 @@ namespace Cdk
             });
             app.Synth();
         }
+    }
+
+    public class ReportStackProps : StackProps
+    {
+        public string ReportId { get; set; }
     }
 }

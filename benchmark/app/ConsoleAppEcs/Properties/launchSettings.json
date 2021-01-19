@@ -3,6 +3,7 @@
     "ConsoleAppEcs": {
       "commandName": "Project",
       "environmentVariables": {
+        "DFRAME_MASTER_CONNECT_TO_HOST": "localhost",
         "DFRAME_WORKER_CLUSTER_NAME": "MagicOnionBenchmarkCdkStack-WorkerClusterB2BB5BD9-yLDvC4AGFi9t",
         "DFRAME_WORKER_CONTAINER_NAME": "worker",
         "DFRAME_WORKER_TASK_NAME": "MagicOnionBenchmarkCdkStackDFrameWorkerTaskDefC9B515A3",
