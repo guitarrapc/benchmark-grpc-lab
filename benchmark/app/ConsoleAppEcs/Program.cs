@@ -26,7 +26,7 @@ namespace ConsoleAppEcs
             if (args.Length == 0)
             {
                 // master
-                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 10 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 10 -workerPerProcess 10 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
