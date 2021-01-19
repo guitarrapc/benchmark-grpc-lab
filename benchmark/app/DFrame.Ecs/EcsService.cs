@@ -74,16 +74,28 @@ namespace DFrame.Ecs
             return taskDefinition != null;
         }
 
-        public async Task<NewTaskDefinition> UpdateTaskDefinitionImageAsync(string image, string tag, CancellationToken ct = default)
+        public async Task<NewTaskDefinition> UpdateTaskDefinitionImageAsync(string image, CancellationToken ct = default)
         {
             var taskDefinition = await GetTaskDefinitionAsync(ct).ConfigureAwait(false);
             var containerDefinition = taskDefinition.ContainerDefinitions.FirstOrDefault(x => x.Name == ContainerName);
-            containerDefinition.Image = $"{image}:{tag}";
+            containerDefinition.Image = image;
+            containerDefinition.Memory = int.Parse(taskDefinition.Memory);
+            if (!containerDefinition.Command.Contains("--worker-flag"))
+            {
+                containerDefinition.Command.Add("--worker-flag");
+            }
             var registerResponse = await _client.RegisterTaskDefinitionAsync(new RegisterTaskDefinitionRequest
             {
                 ContainerDefinitions = taskDefinition.ContainerDefinitions,
+                RequiresCompatibilities = taskDefinition.RequiresCompatibilities,                
                 Family = taskDefinition.Family,
-                Volumes = taskDefinition.Volumes,
+                Cpu = taskDefinition.Cpu,
+                Memory = taskDefinition.Memory,
+                NetworkMode = taskDefinition.NetworkMode,
+                Volumes =taskDefinition.Volumes,
+                TaskRoleArn = taskDefinition.TaskRoleArn,
+                ExecutionRoleArn = taskDefinition.ExecutionRoleArn,
+                
             }, ct).ConfigureAwait(false);
 
             return new NewTaskDefinition
@@ -92,24 +104,23 @@ namespace DFrame.Ecs
                 TaskDefinition = registerResponse.TaskDefinition,
             };
         }
-        public async System.Threading.Tasks.Task RollingServiceDeploymentAsync(string newTaskRevision, int desiredCount, CancellationToken ct = default)
+
+        public async System.Threading.Tasks.Task UpdateServiceDeploymentAsync(string newTaskRevision, int desiredCount, CancellationToken ct = default)
         {
-            await PerformRollingServiceDeployment(ClusterName, ServiceName, newTaskRevision, desiredCount, ct).ConfigureAwait(false);
+            await PerformServiceDeployment(ClusterName, ServiceName, newTaskRevision, desiredCount, ct).ConfigureAwait(false);
         }
         public async System.Threading.Tasks.Task ScaleServiceAsync(int desiredCount, CancellationToken ct = default)
         {
-            await PerformRollingServiceDeployment(ClusterName, ServiceName, desiredCount, ct).ConfigureAwait(false);
+            await PerformServiceDeployment(ClusterName, ServiceName, desiredCount, ct).ConfigureAwait(false);
         }
 
-        private async Task<bool> PerformRollingServiceDeployment(string cluster, string serviceName, int desiredCount, CancellationToken ct = default)
+        private async Task<bool> PerformServiceDeployment(string cluster, string serviceName, int desiredCount, CancellationToken ct = default)
         {
             var describeServiceRequest = new DescribeServicesRequest
             {
                 Cluster = cluster,
                 Services = new List<string> { serviceName },
             };
-
-            Console.Write($"Starting tasks with same revision.");
             await _client.UpdateServiceAsync(new UpdateServiceRequest
             {
                 Cluster = cluster,
@@ -125,7 +136,7 @@ namespace DFrame.Ecs
             Console.WriteLine($"Complete deploy {desiredCount} total tasks");
             return true;
         }
-        private async Task<bool> PerformRollingServiceDeployment(string cluster, string serviceName, string taskRevision, int desiredCount, CancellationToken ct = default)
+        private async Task<bool> PerformServiceDeployment(string cluster, string serviceName, string taskRevision, int desiredCount, CancellationToken ct = default)
         {
             var describeServiceRequest = new DescribeServicesRequest
             {
@@ -133,13 +144,14 @@ namespace DFrame.Ecs
                 Services = new List<string> { serviceName },
             };
 
-            Console.Write($"Starting tasks with new revision {taskRevision}.");
+            Console.WriteLine($"Starting tasks with new revision {taskRevision}.");
             await _client.UpdateServiceAsync(new UpdateServiceRequest
             {
                 Cluster = cluster,
                 Service = serviceName,
                 TaskDefinition = taskRevision,
-                DesiredCount = desiredCount
+                DesiredCount = desiredCount,
+                ForceNewDeployment = true,                
             }, ct).ConfigureAwait(false);
             if (!await WaitTillUpdateServiceComplete(describeServiceRequest, ct).ConfigureAwait(false))
             {

@@ -20,10 +20,9 @@ namespace Benchmark.Web
         {
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? "http://localhost:5000";
-            _iterations = "254,1024,4096,16384";
-            _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? "testtest";
-            //var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException("Environment variable 'BENCHCLIENT_S3BUCKET' is not defined.");
-            var path = "bin/hogemogefugafuga";
+            _iterations = Environment.GetEnvironmentVariable("BENCH_ITERATIONS") ?? "1";
+            _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? "testid";
+            var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? "testbucket";
 
             _benchmarker = new Benchmarker(path, null, _cts.Token);
         }

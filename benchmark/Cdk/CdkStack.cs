@@ -1,14 +1,16 @@
 using Amazon.CDK;
 using Amazon.CDK.AWS.AutoScaling;
 using Amazon.CDK.AWS.EC2;
+using Amazon.CDK.AWS.Ecr.Assets;
 using Amazon.CDK.AWS.ECS;
-using Amazon.CDK.AWS.ECS.Patterns;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Deployment;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Cdk
 {
@@ -16,7 +18,9 @@ namespace Cdk
     {
         internal CdkStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
         {
-            var logGroup = "MagicOnionBenchWorkerLogGroup";
+            var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
+            var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
+
             var vpc = new Vpc(this, "Vpc", new VpcProps { MaxAzs = 2 });
             var subnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE };
             var sg = new SecurityGroup(this, "MasterSg", new SecurityGroupProps
@@ -40,8 +44,8 @@ namespace Cdk
                 Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "out/linux/server/")) },
                 DestinationKeyPrefix = "assembly/linux/server/"
             });
-            var iamMasterRole = GetIamMasterRole(s3);
-            var iamWorkerTaskExecuteRole = GetIamWorkerTaskExecuteRole(logGroup);
+            var iamMagicOnionRole = GetIamMagicOnionRole(s3);
+            var iamEcsTaskExecuteRole = GetIamEcsTaskExecuteRole(new[] { dframeWorkerLogGroup , dframeMasterLogGroup });
             var iamDFrameTaskDefRole = GetIamDframeTaskDefRole();
             var iamWorkerTaskDefRole = GetIamWorkerTaskDefRole(s3);
 
@@ -59,7 +63,7 @@ namespace Cdk
                 MachineImage = new AmazonLinuxImage(),
                 AllowAllOutbound = true,
                 GroupMetrics = new[] { GroupMetrics.All() },
-                Role = iamMasterRole,
+                Role = iamMagicOnionRole,
             });
             asg.AddUserData(@$"#!/bin/bash
 # install .NET 5 Runtime
@@ -82,98 +86,151 @@ sudo systemctl restart Benchmark.Server
             {
                 Vpc = vpc,
             });
-            var workerTaskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
+            //var workerTaskDef = new FargateTaskDefinition(this, "WorkerTaskDef", new FargateTaskDefinitionProps
+            //{
+            //    ExecutionRole = iamWorkerTaskExecuteRole,
+            //    TaskRole = iamWorkerTaskDefRole,
+            //});
+            //workerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
+            //{
+            //    Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
+            //    {
+            //        File = "Benchmark.Client/Dockerfile",
+            //    }),
+            //    Environment = new Dictionary<string, string>
+            //    {
+            //        { "BENCHCLIENT_RUNASWEB", "true" },
+            //        { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
+            //        { "BENCHCLIENT_S3BUCKET", s3.BucketName },
+            //    },
+            //    Logging = LogDriver.AwsLogs(new AwsLogDriverProps
+            //    {
+            //        LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
+            //        {
+            //            LogGroupName = logGroup,
+            //            RemovalPolicy = RemovalPolicy.DESTROY,
+            //            Retention = RetentionDays.TWO_WEEKS,
+            //        }),
+            //        StreamPrefix = logGroup,
+            //    }),
+            //}).AddPortMappings(new PortMapping
+            //{
+            //    ContainerPort = 80,
+            //    HostPort = 80,
+            //    Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
+            //});
+            //var workerService = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
+            //{
+            //    TaskSubnets = subnets,
+            //    Cluster = cluster,
+            //    TaskDefinition = workerTaskDef,
+            //    DesiredCount = 1,
+            //    Cpu = 256,
+            //    MemoryLimitMiB = 512,
+            //    PublicLoadBalancer = true,
+            //    PlatformVersion = FargatePlatformVersion.VERSION1_4,
+            //});
+
+            // dframe-worker
+            var dframeWorkerContainerName = "worker";
+            var dockerImage = new DockerImageAsset(this, "dframeWorkerImage", new DockerImageAssetProps
             {
-                ExecutionRole = iamWorkerTaskExecuteRole,
-                TaskRole = iamWorkerTaskDefRole,
+                Directory = Path.Combine(Directory.GetCurrentDirectory(), "app"),
+                File = "ConsoleAppEcs/Dockerfile.Ecs",
             });
-            workerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
+            var dframeImage = ContainerImage.FromDockerImageAsset(dockerImage);
+            var dframeWorkerTaskDef = new FargateTaskDefinition(this, "DFrameWorkerTaskDef", new FargateTaskDefinitionProps
             {
-                Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
-                {
-                    File = "Benchmark.Client/Dockerfile",
-                }),
+                ExecutionRole = iamEcsTaskExecuteRole,
+                TaskRole = iamWorkerTaskDefRole,
+                Cpu = 256,
+                MemoryLimitMiB = 512,
+            });
+            dframeWorkerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
+            {
+                Image = dframeImage,
+                Command = new[] { "--worker-flag" },
                 Environment = new Dictionary<string, string>
                 {
-                    { "BENCHCLIENT_RUNASWEB", "true" },
-                    { "BENCHCLIENT_HOSTADDRESS", "http://0.0.0.0:80" },
-                    { "BENCHCLIENT_S3BUCKET", s3.BucketName },
+                    { "BENCH_SERVER_HOST", "10.0.148.185" },
+                    { "BENCH_REPORTID", Guid.NewGuid().ToString() },
+                    { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
                 {
                     LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
                     {
-                        LogGroupName = logGroup,
+                        LogGroupName = dframeWorkerLogGroup,
                         RemovalPolicy = RemovalPolicy.DESTROY,
                         Retention = RetentionDays.TWO_WEEKS,
                     }),
-                    StreamPrefix = logGroup,
+                    StreamPrefix = dframeWorkerLogGroup,
                 }),
-            }).AddPortMappings(new PortMapping
-            {
-                ContainerPort = 80,
-                HostPort = 80,
-                Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
             });
-            var workerService = new ApplicationLoadBalancedFargateService(this, "WorkerService", new ApplicationLoadBalancedFargateServiceProps
+            var dframeWorkerService = new FargateService(this, "DFrameWorkerService", new FargateServiceProps
             {
-                TaskSubnets = subnets,
+                DesiredCount = 0,
                 Cluster = cluster,
-                TaskDefinition = workerTaskDef,
-                DesiredCount = 1,
+                TaskDefinition = dframeWorkerTaskDef,
+                VpcSubnets = subnets,
+                SecurityGroups = new[] { sg },
+                PlatformVersion = FargatePlatformVersion.VERSION1_4,                
+            });
+
+            // dframe-master
+            var dframeMasterTaskDef = new FargateTaskDefinition(this, "DFrameMasterTaskDef", new FargateTaskDefinitionProps
+            {
+                ExecutionRole = iamEcsTaskExecuteRole,
+                TaskRole = iamDFrameTaskDefRole,
                 Cpu = 256,
                 MemoryLimitMiB = 512,
-                PublicLoadBalancer = true,
+            });
+            dframeMasterTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
+            {
+                Image = dframeImage,                
+                Environment = new Dictionary<string, string>
+                {
+                    { "DFRAME_WORKER_CONTAINER_NAME", dframeWorkerContainerName },
+                    { "DFRAME_WORKER_CLUSTER_NAME", cluster.ClusterName },
+                    { "DFRAME_WORKER_SERVICE_NAME", dframeWorkerService.ServiceName },
+                    { "DFRAME_WORKER_TASK_NAME", Fn.Select(1, Fn.Split("/", dframeWorkerTaskDef.TaskDefinitionArn)) },
+                    { "DFRAME_WORKER_IMAGE", dockerImage.ImageUri },
+                },
+                Logging = LogDriver.AwsLogs(new AwsLogDriverProps
+                {
+                    LogGroup = new LogGroup(this, "MasterLogGroup", new LogGroupProps
+                    {
+                        LogGroupName = dframeMasterLogGroup,
+                        RemovalPolicy = RemovalPolicy.DESTROY,
+                        Retention = RetentionDays.TWO_WEEKS,
+                    }),
+                    StreamPrefix = dframeMasterLogGroup,
+                }),
+            });
+            var dframeMasterService = new FargateService(this, "DFrameMasterService", new FargateServiceProps
+            {
+                DesiredCount = 1,
+                Cluster = cluster,
+                TaskDefinition = dframeMasterTaskDef,
+                VpcSubnets = subnets,
+                SecurityGroups = new[] { sg },
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
             });
 
-            // dframe
-            var dframeTaskDef = new FargateTaskDefinition(this, "DFrameTaskDef", new FargateTaskDefinitionProps
-            {
-                ExecutionRole = iamWorkerTaskExecuteRole,
-                TaskRole = iamDFrameTaskDefRole,
-            });
-            dframeTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
-            {
-                Image = ContainerImage.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "app"), new AssetImageProps
-                {
-                    File = "DFrameWorker/Dockerfile",
-                }),
-                Environment = new Dictionary<string, string>
-                {
-                    { "DFRAME_WORKER_CLUSTER_NAME", cluster.ClusterName },
-                    { "DFRAME_WORKER_SERVICE_NAME", workerService.Service.ServiceName },
-                    { "DFRAME_WORKER_TASK_NAME", Token.AsString(workerService.TaskDefinition.TaskDefinitionArn) },
-                    { "DFRAME_WORKER_CONTAINER_NAME", "worker" },
-                    { "DFRAME_WORKER_IMAGE_TAG", s3.BucketName },
-                    { "DFRAME_WORKER_IMAGE_NAME", s3.BucketName },
-                },
-                Logging = LogDriver.AwsLogs(new AwsLogDriverProps
-                {
-                    LogGroup = new LogGroup(this, "WorkerLogGroup", new LogGroupProps
-                    {
-                        LogGroupName = logGroup,
-                        RemovalPolicy = RemovalPolicy.DESTROY,
-                        Retention = RetentionDays.TWO_WEEKS,
-                    }),
-                    StreamPrefix = logGroup,
-                }),
-            }).AddPortMappings(new PortMapping
-            {
-                ContainerPort = 80,
-                HostPort = 80,
-                Protocol = Amazon.CDK.AWS.ECS.Protocol.TCP,
-            });
-
-            var taskFamilyRevision = Fn.Select(1, Fn.Split("/", workerService.TaskDefinition.TaskDefinitionArn));
-            var taskName = Fn.Select(0, Fn.Split(":", taskFamilyRevision));
+            // output
+            var masterTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeMasterService.TaskDefinition.TaskDefinitionArn));
+            var workerTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeWorkerService.TaskDefinition.TaskDefinitionArn));
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
-            new CfnOutput(this, "EcsServiceName", new CfnOutputProps { Value = workerService.Service.ServiceName });
-            new CfnOutput(this, "EcsTaskdefArn", new CfnOutputProps { Value = workerService.TaskDefinition.TaskDefinitionArn });
-            new CfnOutput(this, "EcsTaskdefName", new CfnOutputProps { Value = taskName });
+            new CfnOutput(this, "DFrameMasterEcsServiceName", new CfnOutputProps { Value = dframeMasterService.ServiceName });
+            new CfnOutput(this, "DFrameMasterEcsTaskdefArn", new CfnOutputProps { Value = dframeMasterService.TaskDefinition.TaskDefinitionArn });
+            new CfnOutput(this, "DFrameMasterEcsTaskdefName", new CfnOutputProps { Value = Fn.Select(0, Fn.Split(":", masterTaskFamilyRevision)) });
+            new CfnOutput(this, "DFrameWorkerEcsServiceName", new CfnOutputProps { Value = dframeWorkerService.ServiceName });
+            new CfnOutput(this, "DFrameWorkerEcsTaskdefArn", new CfnOutputProps { Value = dframeWorkerService.TaskDefinition.TaskDefinitionArn });
+            new CfnOutput(this, "DFrameWorkerEcsTaskdefName", new CfnOutputProps { Value = Fn.Select(0, Fn.Split(":", workerTaskFamilyRevision)) });
+            new CfnOutput(this, "DFrameWorkerEcsTaskdefImage", new CfnOutputProps { Value = dockerImage.ImageUri });
         }
 
-        private Role GetIamMasterRole(Bucket s3)
+        private Role GetIamMagicOnionRole(Bucket s3)
         {
             var policy = new Policy(this, "MasterPolicy", new PolicyProps
             {
@@ -203,7 +260,7 @@ sudo systemctl restart Benchmark.Server
             role.AttachInlinePolicy(policy);
             return role;
         }
-        private Role GetIamWorkerTaskExecuteRole(string logGroup)
+        private Role GetIamEcsTaskExecuteRole(string[] logGroups)
         {
             var policy = new Policy(this, "WorkerTaskDefExecutionPolicy", new PolicyProps
             {
@@ -217,7 +274,7 @@ sudo systemctl restart Benchmark.Server
                             "logs:CreateLogStream",
                             "logs:PutLogEvents"
                         },
-                        Resources = new[] { $"arn:aws:logs:{this.Region}:{this.Account}:log-group:{logGroup}:*" },
+                        Resources = logGroups.Select(x => $"arn:aws:logs:{this.Region}:{this.Account}:log-group:{x}:*").ToArray(),
                     }),
                 }
             });
@@ -247,11 +304,20 @@ sudo systemctl restart Benchmark.Server
                             "ecs:DiscoverPollEndpoint",
                             "ecs:Poll",
                             "ecs:RegisterContainerInstance",
+                            "ecs:RegisterTaskDefinition",
                             "ecs:StartTelemetrySession",
                             "ecs:UpdateContainerInstancesState",
                             "ecs:Submit*",
                         },
                         Resources = new[] { "*" },
+                    }),
+                    new PolicyStatement(new PolicyStatementProps
+                    {
+                        Actions = new []
+                        {
+                            "iam:PassRole",
+                        },
+                        Resources = new [] { "*" },
                     }),
                 }
             });
