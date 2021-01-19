@@ -2,23 +2,7 @@ name: benchmark_magiconion
 
 on:
   workflow_dispatch:
-    inputs:
-      benchcommand:
-        description: "command for bench"
-        required: true
-        default: "benchunary"
-      processcount:
-        description: "concurrent execute process count"
-        required: true
-        default: "5"
-      iterations:
-        description: "request count array to execute. (separate with ,)"
-        required: true
-        default: "256,1024,4096,16384"
-      hostaddress:
-        description: "load testing target server address"
-        required: true
-        default: "http://localhost:80"
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -28,13 +12,11 @@ jobs:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
       NUGET_XMLDOC_MODE: skip
       DISABLE_NETFX_TARGET_BUILD: 1
-      DOTNET_SDK_VERSION_3: "3.1.403"
-      DOTNET_SDK_VERSION_5: "5.0.100"
-      BENCH_BUCKET: bench-magiconion-s3-bucket-5c7e45b
-      BENCH_COMMAND: ${{ github.event.inputs.benchcommand }}
-      BENCH_PROCESSCOUNT: ${{ github.event.inputs.processcount }}
-      BENCH_ITERATIONS: ${{ github.event.inputs.iterations }}
-      BENCH_HOSTADDRESS: ${{ github.event.inputs.hostaddress }}
+      DOTNET_SDK_VERSION_3: "3.1.x"
+      DOTNET_SDK_VERSION_5: "5.0.x"
+    defaults:
+      run:
+        working-directory: ./benchmark
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-dotnet@v1
@@ -43,53 +25,17 @@ jobs:
       - uses: actions/setup-dotnet@v1
         with:
           dotnet-version: "${{ env.DOTNET_SDK_VERSION_5 }}"
-      # build
-      - run: dotnet build ./benchmark/Benchmark.Server/ -c Release
-      - run: dotnet build ./benchmark/Benchmark.Client/ -c Release
-      - run: dotnet publish ./benchmark/Benchmark.Server/ -c Release -r linux-x64 -p:PublishSingleFile=true --no-self-contained -o benchmark/out/linux/server
-      - run: dotnet publish ./benchmark/Benchmark.Client/ -c Release  -r linux-x64 -p:PublishSingleFile=true --no-self-contained -o benchmark/out/linux/client
-      # upload
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+      - run: npm install
+      - run: npm install -g aws-cdk
+      - run: dotnet build ./app/Benchmark.Server/ -c Release
+      - run: dotnet publish ./app/Benchmark.Server/ -c Release -o out/linux/server -r linux-x64 -p:PublishSingleFile=true --no-self-contained
       - uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
-      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/server/ s3://${BENCH_BUCKET}/assembly/linux/server/
-      - run: aws s3 sync --exact-timestamps ./benchmark/out/linux/client/ s3://${BENCH_BUCKET}/assembly/linux/client/
-      - name: update server binary
-        run: |
-          instanceId=$(aws ssm describe-instance-information --output json --filters Key=tag-key,Values=bench --filters=Key=PingStatus,Values=Online | jq -r ".InstanceInformationList[].InstanceId")
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/download_server.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/register_server.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/stop_server.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/run_server.json --output json | jq -r ".Command.CommandId"
-      - name: update client binary
-        run: |
-          instanceId=$(aws ssm describe-instance-information --output json --filters Key=tag-key,Values=bench --filters=Key=PingStatus,Values=Online | jq -r ".InstanceInformationList[].InstanceId")
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/download_client.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/register_client.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/stop_client.json --output json | jq -r ".Command.CommandId"
-          aws ssm send-command --document-name "AWS-RunShellScript" --targets "Key=InstanceIds,Values=${instanceId}" --cli-input-json file://benchmark/run_client.json --output json | jq -r ".Command.CommandId"
-      # run
-      - run: sleep 30s
-      - run: |
-          #!/bin/bash -e
-          function urlencode() {
-            local input="${1}"
-            local output=""
-            local i=0
-            for (( i=0 ; i<${#input} ; i++ )); do
-              local o=""
-              local c=${input:$i:1}
-              case "$c" in 
-                  [-_.~a-zA-Z0-9] ) o="${c}" ;;
-                  * ) printf -v o '%%%02x' "'$c"
-              esac
-              output+=$o
-            done
-
-            echo $output
-          }
-          iterations=$(urlencode "${{ env.BENCH_ITERATIONS }}")
-          hostaddress=$(urlencode "${{ env.BENCH_HOSTADDRESS }}")
-          curl -X POST "http://bench-magiconion-alb-0cad2c6-2132448848.ap-northeast-1.elb.amazonaws.com/BenchmarkRunner/RunAllClient" -H "accept: application/json" -H "Content-Type: application/x-www-form-urlencoded" -d "processCount=${{ env.BENCH_PROCESSCOUNT }}&iterations=${iterations}&benchCommand=${{ env.BENCH_COMMAND }}&hostAddress=${hostaddress}" -H "x-accesstoken: ${{ secrets.ACCESSTOKEN}}"
+      - run: cdk synth
+      - run: cdk deploy --force --ci
