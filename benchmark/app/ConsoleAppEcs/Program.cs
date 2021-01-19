@@ -26,7 +26,7 @@ namespace ConsoleAppEcs
             if (args.Length == 0)
             {
                 // master
-                args = "request -processCount 10 -workerPerProcess 10 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 100 -workerPerProcess 100 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -67,7 +67,7 @@ namespace ConsoleAppEcs
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("SetupAsync");
-            _iterations = "256,1024";
+            _iterations = "10,100,1000";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
