@@ -68,7 +68,7 @@ namespace ConsoleAppEcs
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("SetupAsync");
-            _iterations = "10,100,1000";
+            _iterations = "100";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
