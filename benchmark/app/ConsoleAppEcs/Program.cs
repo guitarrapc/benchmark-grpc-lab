@@ -73,10 +73,7 @@ namespace ConsoleAppEcs
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
-            Console.WriteLine($"iterations {_iterations}");
-            Console.WriteLine($"hostAddress {_hostAddress}");
-            Console.WriteLine($"reportId {_reportId}");
-            Console.WriteLine($"path {path}");
+            Console.WriteLine($"iterations {_iterations}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
 
             _benchmarker = new Benchmarker(path, null, _cts.Token);
         }
