@@ -220,17 +220,13 @@ namespace Benchmark.ClientLib.Storage
             _logger?.LogInformation($"downloading content from S3. bucket {path}, prefix {prefix}");
 
             // todo: continuation
-            var objects = await _client.ListObjectsV2Async(new Amazon.S3.Model.ListObjectsV2Request
-            {
-                BucketName = path,
-                Prefix = prefix,
-            }, ct);
+            var objects = await ListObjectsAsync(path, prefix, ct);
 
-            if (objects.KeyCount == 0)
+            if (!objects.Any())
                 return Array.Empty<string>();
 
             var contents = new ConcurrentBag<string>();
-            var tasks = objects.S3Objects.Select(async x =>
+            var tasks = objects.Select(async x =>
             {
                 using var res = await _client.GetObjectAsync(new Amazon.S3.Model.GetObjectRequest
                 {
