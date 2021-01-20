@@ -26,7 +26,7 @@ namespace ConsoleAppEcs
             if (args.Length == 0)
             {
                 // master
-                args = "request -processCount 10 -workerPerProcess 1000 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -48,7 +48,7 @@ namespace ConsoleAppEcs
                 })
                 .RunDFrameLoadTestingAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
                 {
-                    Timeout = TimeSpan.FromMinutes(20),
+                    Timeout = TimeSpan.FromMinutes(10),
                 });
                 //.RunDFrameLoadTestingAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())
                 // {
