@@ -29,16 +29,7 @@ namespace Cdk
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
-            var vpc = new Vpc(this, "Vpc", new VpcProps { MaxAzs = 2 });
-            var subnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE };
-            var sg = new SecurityGroup(this, "MasterSg", new SecurityGroupProps
-            {
-                AllowAllOutbound = true,
-                Vpc = vpc,
-            });
-            foreach (var subnet in vpc.PrivateSubnets)
-                sg.AddIngressRule(Peer.Ipv4(subnet.Ipv4CidrBlock), Port.AllTcp(), "VPC", true);
-
+            // s3 deploy
             var s3 = new Bucket(this, "Bucket", new BucketProps
             {
                 AutoDeleteObjects = true,
@@ -50,7 +41,7 @@ namespace Cdk
             {
                 Sid = "AllowPublicRead",
                 Effect = Effect.ALLOW,
-                Principals = new[] { new AnyPrincipal()},
+                Principals = new[] { new AnyPrincipal() },
                 Actions = new[] { "s3:GetObject*" },
                 Resources = new[] { $"{s3.BucketArn}/html/*" },
             }));
@@ -60,10 +51,31 @@ namespace Cdk
                 Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "out/linux/server/")) },
                 DestinationKeyPrefix = "assembly/linux/server/"
             });
+
+            // docker deploy
+            var dockerImage = new DockerImageAsset(this, "dframeWorkerImage", new DockerImageAssetProps
+            {
+                Directory = Path.Combine(Directory.GetCurrentDirectory(), "app"),
+                File = "ConsoleAppEcs/Dockerfile.Ecs",
+            });
+            var dframeImage = ContainerImage.FromDockerImageAsset(dockerImage);
+
+            // iam
             var iamMagicOnionRole = GetIamMagicOnionRole(s3);
-            var iamEcsTaskExecuteRole = GetIamEcsTaskExecuteRole(new[] { dframeWorkerLogGroup , dframeMasterLogGroup });
+            var iamEcsTaskExecuteRole = GetIamEcsTaskExecuteRole(new[] { dframeWorkerLogGroup, dframeMasterLogGroup });
             var iamDFrameTaskDefRole = GetIamDframeTaskDefRole(s3);
             var iamWorkerTaskDefRole = GetIamWorkerTaskDefRole(s3);
+
+            // network
+            var vpc = new Vpc(this, "Vpc", new VpcProps { MaxAzs = 2 });
+            var subnets = new SubnetSelection { SubnetType = SubnetType.PRIVATE };
+            var sg = new SecurityGroup(this, "MasterSg", new SecurityGroupProps
+            {
+                AllowAllOutbound = true,
+                Vpc = vpc,
+            });
+            foreach (var subnet in vpc.PrivateSubnets)
+                sg.AddIngressRule(Peer.Ipv4(subnet.Ipv4CidrBlock), Port.AllTcp(), "VPC", true);
 
             // MagicOnion
             var asg = new AutoScalingGroup(this, "MagicOnionAsg", new AutoScalingGroupProps
@@ -117,12 +129,6 @@ sudo systemctl restart Benchmark.Server
 
             // dframe-worker
             var dframeWorkerContainerName = "worker";
-            var dockerImage = new DockerImageAsset(this, "dframeWorkerImage", new DockerImageAssetProps
-            {
-                Directory = Path.Combine(Directory.GetCurrentDirectory(), "app"),
-                File = "ConsoleAppEcs/Dockerfile.Ecs",
-            });
-            var dframeImage = ContainerImage.FromDockerImageAsset(dockerImage);
             var dframeWorkerTaskDef = new FargateTaskDefinition(this, "DFrameWorkerTaskDef", new FargateTaskDefinitionProps
             {
                 ExecutionRole = iamEcsTaskExecuteRole,
