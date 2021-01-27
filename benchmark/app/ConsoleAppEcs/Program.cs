@@ -30,7 +30,7 @@ namespace ConsoleAppEcs
             if (args.Length == 0)
             {
                 // master
-                args = "request -processCount 10 -workerPerProcess 10 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 200 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -85,10 +85,11 @@ namespace ConsoleAppEcs
         private string _iterations;
         private string _reportId;
         private Benchmarker _benchmarker;
+        private int current = 0;
 
         public override async Task SetupAsync(WorkerContext context)
         {
-            Console.WriteLine("SetupAsync");
+            Console.WriteLine("Setup");
             _iterations = "1,10";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
@@ -103,7 +104,7 @@ namespace ConsoleAppEcs
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
-            Console.WriteLine("Execute");
+            Console.WriteLine($"Execute {Interlocked.Increment(ref current)} ({context.WorkerId})");
             try
             {
                 await _benchmarker.BenchUnary(_hostAddress, _iterations, _reportId);

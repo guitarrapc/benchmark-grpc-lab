@@ -199,14 +199,14 @@ systemctl start  cloudmap.service
                 AutoScalingGroupName = asg.AutoScalingGroupName,
                 DesiredCapacity = 1,
                 MaxSize = 1,
-                Recurrence = "0 1 * 1-5 *",
+                Recurrence = "0 0 * 1-5 *", // AM9:00 (JST+9)
             });
             new CfnScheduledAction(this, "ScheduleIn", new CfnScheduledActionProps
             {
                 AutoScalingGroupName = asg.AutoScalingGroupName,
                 DesiredCapacity = 0,
                 MaxSize = 0,
-                Recurrence = "0 10 * 1-5 *",
+                Recurrence = "0 12 * 1-5 *", // PM21:00 (JST+9)
             });
 
             // ECS
