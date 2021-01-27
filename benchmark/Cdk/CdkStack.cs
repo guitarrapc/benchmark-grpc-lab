@@ -45,6 +45,14 @@ namespace Cdk
                 Actions = new[] { "s3:GetObject*" },
                 Resources = new[] { $"{s3.BucketArn}/html/*" },
             }));
+            s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
+            {
+                Sid = "AllowAwsAccountAccess",
+                Effect = Effect.ALLOW,
+                Principals = new[] { new AccountRootPrincipal() },
+                Actions = new[] { "s3:*" },
+                Resources = new[] { $"{s3.BucketArn}/*" },
+            }));
             var masterDllDeployment = new BucketDeployment(this, "DeployMasterDll", new BucketDeploymentProps
             {
                 DestinationBucket = s3,
