@@ -20,7 +20,9 @@ namespace Cdk
     {
         internal CdkStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
         {
-            var reportProps = ReportStackProps.Parse(props);
+            var stackProps = ReportStackProps.ParseOrDefault(props);
+            // recreate MagicOnion Ec2 via renew userdata
+            var recreateMagicOnionTrigger = stackProps.RecreateMagicOnion ? $"echo {stackProps.ExecuteTime}" : "";
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
@@ -36,8 +38,8 @@ namespace Cdk
             {
                 Enabled = true,
                 Prefix = "reports/",
-                Expiration = Duration.Days(reportProps.DaysKeepReports), // keep only 14day and auto delete old reports
-                NoncurrentVersionExpiration = Duration.Days(reportProps.DaysKeepReports),
+                Expiration = Duration.Days(stackProps.DaysKeepReports), // keep only 14day and auto delete old reports
+                NoncurrentVersionExpiration = Duration.Days(stackProps.DaysKeepReports),
                 AbortIncompleteMultipartUploadAfter = Duration.Days(1),
             });
             s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
@@ -61,6 +63,12 @@ namespace Cdk
                 DestinationBucket = s3,
                 Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "out/linux/server/")) },
                 DestinationKeyPrefix = "assembly/linux/server/"
+            });
+            var userdataDeployment = new BucketDeployment(this, "UserData", new BucketDeploymentProps
+            {
+                DestinationBucket = s3,
+                Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "userdata/")) },
+                DestinationKeyPrefix = "userdata/"
             });
 
             // docker deploy
@@ -133,6 +141,7 @@ namespace Cdk
                 }),
             });
             asg.AddUserData(@$"#!/bin/bash
+{recreateMagicOnionTrigger}
 # install .NET 5
 rpm -Uvh https://packages.microsoft.com/config/centos/7/packages-microsoft-prod.rpm
 yum install -y dotnet-sdk-5.0 aspnetcore-runtime-5.0
@@ -193,6 +202,14 @@ EOF
 systemctl enable cloudmap.service
 systemctl start  cloudmap.service
 
+# install cloudwatch
+aws s3 sync --exact-timestamps s3://{s3.BucketName}/userdata/ ~/userdata
+chmod 600 ~/userdata/amazon-cloudwatch-agent.json
+rpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+cp ~/userdata/amazon-cloudwatch-agent.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
+/opt/aws/amazon-cloudwatch-agent/bin/config-translator --input /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json --output /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml --mode ec2
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start
 ".Replace("\r\n", "\n"));
             asg.UserData.AddSignalOnExitCommand(asg);
             asg.Node.AddDependency(masterDllDeployment);
@@ -237,7 +254,7 @@ systemctl start  cloudmap.service
                     { "DFRAME_MASTER_CONNECT_TO_HOST", $"{dframeMapName}.{serviceDiscoveryDomain}"},
                     { "DFRAME_MASTER_CONNECT_TO_PORT", "12345"},
                     { "BENCH_SERVER_HOST", $"http://{serverMapName}.{serviceDiscoveryDomain}" },
-                    { "BENCH_REPORTID", reportProps.ReportId },
+                    { "BENCH_REPORTID", stackProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -253,6 +270,7 @@ systemctl start  cloudmap.service
             });
             var dframeWorkerService = new FargateService(this, "DFrameWorkerService", new FargateServiceProps
             {
+                ServiceName = "DFrameWorkerService",
                 DesiredCount = 0,
                 Cluster = cluster,
                 TaskDefinition = dframeWorkerTaskDef,
@@ -282,7 +300,7 @@ systemctl start  cloudmap.service
                     { "DFRAME_WORKER_SERVICE_NAME", dframeWorkerService.ServiceName },
                     { "DFRAME_WORKER_TASK_NAME", Fn.Select(1, Fn.Split("/", dframeWorkerTaskDef.TaskDefinitionArn)) },
                     { "DFRAME_WORKER_IMAGE", dockerImage.ImageUri },
-                    { "BENCH_REPORTID", reportProps.ReportId },
+                    { "BENCH_REPORTID", stackProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -319,7 +337,7 @@ systemctl start  cloudmap.service
             // output
             var masterTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeMasterService.TaskDefinition.TaskDefinitionArn));
             var workerTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeWorkerService.TaskDefinition.TaskDefinitionArn));
-            new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{reportProps.ReportId}/index.html" });
+            new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{stackProps.ReportId}/index.html" });
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
             new CfnOutput(this, "DFrameMasterEcsServiceName", new CfnOutputProps { Value = dframeMasterService.ServiceName });
             new CfnOutput(this, "DFrameMasterEcsTaskdefArn", new CfnOutputProps { Value = dframeMasterService.TaskDefinition.TaskDefinitionArn });
@@ -332,7 +350,7 @@ systemctl start  cloudmap.service
 
         private Role GetIamEc2MagicOnionRole(Bucket s3, Service meshService)
         {
-            var policy = new Policy(this, "MasterPolicy", new PolicyProps
+            var policy = new Policy(this, "Ec2MagicOnionPolicy", new PolicyProps
             {
                 Statements = new[]
                 {
@@ -364,6 +382,7 @@ systemctl start  cloudmap.service
             });
             role.AttachInlinePolicy(policy);
             role.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
+            role.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("CloudWatchAgentServerPolicy"));
             return role;
         }
         private Role GetIamEcsTaskExecuteRole(string[] logGroups)

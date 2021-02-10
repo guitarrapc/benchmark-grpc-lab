@@ -30,8 +30,9 @@ namespace Benchmark.ClientLib
 
     var client = Report.Client;
     var summary = Report.Summary;
-    var unaryConnectionsResult = Report.UnaryConnectionsResult;
-    var hubConnectionsResult = Report.HubConnectionsResult;
+    var unaryClientResult = Report.UnaryClientResult;
+    var unaryRequestResult = Report.UnaryRequestResult;
+    var hubRequestResult = Report.HubRequestResult;
 
     var lineColor = GetLineColor();
     var barColor = GetColor();
@@ -152,7 +153,7 @@ namespace Benchmark.ClientLib
                         <thead>
                             <th scope=""col"">Requests</th>
                         ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                            <th scope=\"col\">");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write(" req</th>\r\n                        ");
@@ -160,16 +161,16 @@ namespace Benchmark.ClientLib
             this.Write("                            <th scope=\"col\">Errors</th>\r\n                        " +
                     "</thead>\r\n                        <tr>\r\n                            <td>Duration" +
                     "</td>\r\n                        ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
             this.Write(" sec</td>\r\n                        ");
  } 
             this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(unaryConnectionsResult.Errors));
+            this.Write(this.ToStringHelper.ToStringWithCulture(unaryRequestResult.Errors));
             this.Write("</td>\r\n                        </tr>\r\n                        <tr>\r\n             " +
                     "               <td>Rps</td>\r\n                        ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Rps)));
             this.Write(" rps</td>\r\n                        ");
@@ -185,7 +186,7 @@ namespace Benchmark.ClientLib
                         <thead>
                             <th scope=""col"">Requests</th>
                         ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                            <th scope=\"col\">");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write(" req</th>\r\n                        ");
@@ -193,16 +194,16 @@ namespace Benchmark.ClientLib
             this.Write("                            <th scope=\"col\">Errors</th>\r\n                        " +
                     "</thead>\r\n                        <tr>\r\n                            <td>Duration" +
                     "</td>\r\n                        ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
             this.Write(" sec</td>\r\n                        ");
  } 
             this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(hubConnectionsResult.Errors));
+            this.Write(this.ToStringHelper.ToStringWithCulture(hubRequestResult.Errors));
             this.Write("</td>\r\n                        </tr>\r\n                        <tr>\r\n             " +
                     "               <td>Rps</td>\r\n                        ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Rps)));
             this.Write(" rps</td>\r\n                        ");
@@ -214,19 +215,20 @@ namespace Benchmark.ClientLib
 
                 <div>
                     <h2>Unary Connection Bench</h2>
-                    <canvas id=""unaryConnectionAvg""></canvas>
-                    <canvas id=""unaryConnectionStackBar""></canvas>
+                    <canvas id=""unaryClientAvg""></canvas>
+                    <canvas id=""unaryRequestAvg""></canvas>
+                    <canvas id=""unaryRequestStackBar""></canvas>
 
                     <script>
-                        var ctx = document.getElementById(""unaryConnectionAvg"");
+                        var ctx = document.getElementById(""unaryClientAvg"");
                         var myChart = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: [
                                 ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryClientResult.SummaryItems) { 
             this.Write("                                    \"");
-            this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.ClientCount));
             this.Write("\",\r\n                                ");
  } 
             this.Write(@"                                ],
@@ -240,7 +242,7 @@ namespace Benchmark.ClientLib
             this.Write(this.ToStringHelper.ToStringWithCulture(barColor));
             this.Write("\",\r\n                                    data: [\r\n                                " +
                     "    ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryClientResult.SummaryItems) { 
             this.Write("                                        ");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.Duration.TotalSeconds));
             this.Write(",\r\n                                    ");
@@ -258,7 +260,78 @@ namespace Benchmark.ClientLib
             this.Write(this.ToStringHelper.ToStringWithCulture(lineColor));
             this.Write("\",\r\n                                    fill: false,\r\n                           " +
                     "         data: [\r\n                                    ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryClientResult.SummaryItems) { 
+            this.Write("                                        ");
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.Rps));
+            this.Write(",\r\n                                    ");
+ } 
+            this.Write(@"                                    ]
+                                },
+                                ]
+                            },
+                            options: {
+                                title: {
+                                    display: true,
+                                    text: 'Client Average Duration & Rps (Unary)',
+                                    padding: 3
+                                },
+                                legend: {
+                                    labels: {
+                                        boxWidth: 30,
+                                        padding: 20
+                                    },
+                                    display: true
+                                },
+                                tooltips: {
+                                    mode: 'label' // data colum for tooltip
+                                },
+                                responsive: true
+                            }
+                        });
+                    </script>
+
+                    <script>
+                        var ctx = document.getElementById(""unaryRequestAvg"");
+                        var myChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: [
+                                ");
+ foreach(var item in unaryRequestResult.SummaryItems) { 
+            this.Write("                                    \"");
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
+            this.Write("\",\r\n                                ");
+ } 
+            this.Write(@"                                ],
+                                datasets: [
+                                {
+                                    type: 'bar',
+                                    label: ""Duration"",
+                                    backgroundColor: """);
+            this.Write(this.ToStringHelper.ToStringWithCulture(barColor));
+            this.Write("\",\r\n                                    borderColor: \"");
+            this.Write(this.ToStringHelper.ToStringWithCulture(barColor));
+            this.Write("\",\r\n                                    data: [\r\n                                " +
+                    "    ");
+ foreach(var item in unaryRequestResult.SummaryItems) { 
+            this.Write("                                        ");
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.Duration.TotalSeconds));
+            this.Write(",\r\n                                    ");
+ } 
+            this.Write(@"                                    ]
+                                },
+                                {
+                                    type: 'line',
+                                    label: ""Rps"",
+                                    pointBackgroundColor: """);
+            this.Write(this.ToStringHelper.ToStringWithCulture(lineColor));
+            this.Write("\",\r\n                                    backgroundColor: \"");
+            this.Write(this.ToStringHelper.ToStringWithCulture(lineColor));
+            this.Write("\",\r\n                                    borderColor: \"");
+            this.Write(this.ToStringHelper.ToStringWithCulture(lineColor));
+            this.Write("\",\r\n                                    fill: false,\r\n                           " +
+                    "         data: [\r\n                                    ");
+ foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                                        ");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.Rps));
             this.Write(",\r\n                                    ");
@@ -288,23 +361,23 @@ namespace Benchmark.ClientLib
                         });
                     </script>
                     <script>
-                        var ctx = document.getElementById(""unaryConnectionStackBar"");
+                        var ctx = document.getElementById(""unaryRequestStackBar"");
                         var myChart = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: [
                                 ");
- foreach(var item in unaryConnectionsResult.SummaryItems) { 
+ foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                                    \"");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write("\",\r\n                                ");
  } 
             this.Write("                                ],\r\n                                datasets: [\r\n" +
                     "                                ");
- for(var i = 0; i < unaryConnectionsResult.ClientDurationItems.Length; i++) { 
+ for(var i = 0; i < unaryRequestResult.ClientDurationItems.Length; i++) { 
             this.Write("                                {\r\n                                    ");
 
-                                        var current = unaryConnectionsResult.ClientDurationItems[i];
+                                        var current = unaryRequestResult.ClientDurationItems[i];
                                         var items = current.Items;
                                         var color = GetColor(i);
                                     
@@ -350,13 +423,13 @@ namespace Benchmark.ClientLib
                     "                  responsive: true\r\n                            }\r\n             " +
                     "           });\r\n                    </script>\r\n                </div>\r\n\r\n       " +
                     "         <div>\r\n                    <h2>Hub Connection Bench</h2>\r\n             " +
-                    "       <canvas id=\"hubConnectionAvg\"></canvas>\r\n                    <canvas id=\"" +
-                    "hubConnectionStackBar\"></canvas>\r\n\r\n                    <script>\r\n              " +
-                    "          var ctx = document.getElementById(\"hubConnectionAvg\");\r\n              " +
-                    "          var myChart = new Chart(ctx, {\r\n                            type: \'bar" +
-                    "\',\r\n                            data: {\r\n                                labels:" +
-                    " [\r\n                                ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+                    "       <canvas id=\"hubRequestAvg\"></canvas>\r\n                    <canvas id=\"hub" +
+                    "RequestStackBar\"></canvas>\r\n\r\n                    <script>\r\n                    " +
+                    "    var ctx = document.getElementById(\"hubRequestAvg\");\r\n                       " +
+                    " var myChart = new Chart(ctx, {\r\n                            type: \'bar\',\r\n     " +
+                    "                       data: {\r\n                                labels: [\r\n     " +
+                    "                           ");
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                                    \"");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write("\",\r\n                                ");
@@ -372,7 +445,7 @@ namespace Benchmark.ClientLib
             this.Write(this.ToStringHelper.ToStringWithCulture(barColor));
             this.Write("\",\r\n                                    data: [\r\n                                " +
                     "    ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                                        ");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.Duration.TotalSeconds));
             this.Write(",\r\n                                    ");
@@ -390,7 +463,7 @@ namespace Benchmark.ClientLib
             this.Write(this.ToStringHelper.ToStringWithCulture(lineColor));
             this.Write("\",\r\n                                    fill: false,\r\n                           " +
                     "         data: [\r\n                                    ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                                        ");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.Rps));
             this.Write(",\r\n                                    ");
@@ -420,23 +493,23 @@ namespace Benchmark.ClientLib
                         });
                     </script>
                     <script>
-                        var ctx = document.getElementById(""hubConnectionStackBar"");
+                        var ctx = document.getElementById(""hubRequestStackBar"");
                         var myChart = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: [
                                 ");
- foreach(var item in hubConnectionsResult.SummaryItems) { 
+ foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                                    \"");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write("\",\r\n                                ");
  } 
             this.Write("                                ],\r\n                                datasets: [\r\n" +
                     "                                ");
- for(var i = 0; i < hubConnectionsResult.ClientDurationItems.Length; i++) { 
+ for(var i = 0; i < hubRequestResult.ClientDurationItems.Length; i++) { 
             this.Write("                                {\r\n                                    ");
 
-                                        var current = hubConnectionsResult.ClientDurationItems[i];
+                                        var current = hubRequestResult.ClientDurationItems[i];
                                         var items = current.Items;
                                         var color = GetColor(i);
                                     

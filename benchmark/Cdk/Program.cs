@@ -12,6 +12,7 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
+                RecreateMagicOnion = false,
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
@@ -24,6 +25,7 @@ namespace Cdk
 
     public class ReportStackProps : StackProps
     {
+        public bool RecreateMagicOnion { get; set; }
         public DateTime ExecuteTime { get; set; }
         public string ReportId { get; set; }
         public int DaysKeepReports { get; set; } = 7;
@@ -35,7 +37,7 @@ namespace Cdk
             ReportId = $"{now.ToString("yyyyMMdd-HHmmss")}-{Guid.NewGuid().ToString()}";
         }
 
-        public static ReportStackProps Parse(IStackProps props)
+        public static ReportStackProps ParseOrDefault(IStackProps props, ReportStackProps @default = null)
         {
             if (props is ReportStackProps r)
             {
@@ -43,7 +45,7 @@ namespace Cdk
             }
             else
             {
-                return new ReportStackProps();
+                return @default != null ? @default : new ReportStackProps();
             }
         }
     }

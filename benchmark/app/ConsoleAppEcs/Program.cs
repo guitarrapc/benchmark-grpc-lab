@@ -31,7 +31,7 @@ namespace ConsoleAppEcs
             {
                 // master
                 // 10 100 200 <- BenchServer CPU 100% / Fargate Task CPU 100%
-                args = "request -processCount 1 -workerPerProcess 10 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 5 -workerPerProcess 50 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
