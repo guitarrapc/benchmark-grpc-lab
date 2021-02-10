@@ -26,12 +26,25 @@ namespace Cdk
     {
         public DateTime ExecuteTime { get; set; }
         public string ReportId { get; set; }
+        public int DaysKeepReports { get; set; } = 14;
 
         public ReportStackProps()
         {
             var now = DateTime.Now;
             ExecuteTime = now;
-            ReportId = $"{now.ToString("yyyyMMddHHmmss")}-{Guid.NewGuid().ToString()}";
+            ReportId = $"{now.ToString("yyyyMMdd-HHmmss")}-{Guid.NewGuid().ToString()}";
+        }
+
+        public static ReportStackProps Parse(IStackProps props)
+        {
+            if (props is ReportStackProps r)
+            {
+                return r;
+            }
+            else
+            {
+                return new ReportStackProps();
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ install cdk cli.
 
 ```shell
 npm install -g aws-cdk
+npm update -g aws-cdk
 ```
 
 ```shell

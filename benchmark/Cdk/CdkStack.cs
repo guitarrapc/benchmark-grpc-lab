@@ -20,12 +20,7 @@ namespace Cdk
     {
         internal CdkStack(Construct scope, string id, IStackProps props = null) : base(scope, id, props)
         {
-            var (now, reportId) = props switch
-            {
-                ReportStackProps r => (r.ExecuteTime, r.ReportId),
-                StackProps _ => (DateTime.Now, Guid.NewGuid().ToString()),
-                _ => throw new NotImplementedException(),
-            };
+            var reportProps = ReportStackProps.Parse(props);
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
@@ -36,6 +31,14 @@ namespace Cdk
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 AccessControl = BucketAccessControl.PRIVATE,
                 Versioned = true,
+            });
+            s3.AddLifecycleRule(new LifecycleRule
+            {
+                Enabled = true,
+                Prefix = "reports/",
+                Expiration = Duration.Days(reportProps.DaysKeepReports), // keep only 14day and auto delete old reports
+                NoncurrentVersionExpiration = Duration.Days(reportProps.DaysKeepReports),
+                AbortIncompleteMultipartUploadAfter = Duration.Days(1),
             });
             s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
             {
@@ -234,7 +237,7 @@ systemctl start  cloudmap.service
                     { "DFRAME_MASTER_CONNECT_TO_HOST", $"{dframeMapName}.{serviceDiscoveryDomain}"},
                     { "DFRAME_MASTER_CONNECT_TO_PORT", "12345"},
                     { "BENCH_SERVER_HOST", $"http://{serverMapName}.{serviceDiscoveryDomain}" },
-                    { "BENCH_REPORTID", reportId },
+                    { "BENCH_REPORTID", reportProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -273,13 +276,13 @@ systemctl start  cloudmap.service
                 Image = dframeImage,                
                 Environment = new Dictionary<string, string>
                 {
+                    { "DFRAME_CLUSTER_NAME", cluster.ClusterName },
                     { "DFRAME_MASTER_SERVICE_NAME", "DFrameMasterService" },
                     { "DFRAME_WORKER_CONTAINER_NAME", dframeWorkerContainerName },
-                    { "DFRAME_WORKER_CLUSTER_NAME", cluster.ClusterName },
                     { "DFRAME_WORKER_SERVICE_NAME", dframeWorkerService.ServiceName },
                     { "DFRAME_WORKER_TASK_NAME", Fn.Select(1, Fn.Split("/", dframeWorkerTaskDef.TaskDefinitionArn)) },
                     { "DFRAME_WORKER_IMAGE", dockerImage.ImageUri },
-                    { "BENCH_REPORTID", reportId },
+                    { "BENCH_REPORTID", reportProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
                 Logging = LogDriver.AwsLogs(new AwsLogDriverProps
@@ -316,7 +319,7 @@ systemctl start  cloudmap.service
             // output
             var masterTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeMasterService.TaskDefinition.TaskDefinitionArn));
             var workerTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeWorkerService.TaskDefinition.TaskDefinitionArn));
-            new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{reportId}/index.html" });
+            new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{reportProps.ReportId}/index.html" });
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
             new CfnOutput(this, "DFrameMasterEcsServiceName", new CfnOutputProps { Value = dframeMasterService.ServiceName });
             new CfnOutput(this, "DFrameMasterEcsTaskdefArn", new CfnOutputProps { Value = dframeMasterService.TaskDefinition.TaskDefinitionArn });

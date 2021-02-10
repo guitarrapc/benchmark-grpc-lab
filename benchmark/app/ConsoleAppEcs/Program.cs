@@ -30,7 +30,8 @@ namespace ConsoleAppEcs
             if (args.Length == 0)
             {
                 // master
-                args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 200 -workerName UnaryWorker".Split(' ');
+                // 10 100 200 <- BenchServer CPU 100% / Fargate Task CPU 100%
+                args = "request -processCount 1 -workerPerProcess 10 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -52,7 +53,7 @@ namespace ConsoleAppEcs
                 })
                 .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
                 {
-                    Timeout = TimeSpan.FromMinutes(10),
+                    Timeout = TimeSpan.FromMinutes(20),
                     OnExecuteResult = (results, option, scenario) =>
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
@@ -90,7 +91,7 @@ namespace ConsoleAppEcs
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("Setup");
-            _iterations = "1,10";
+            _iterations = "1";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
