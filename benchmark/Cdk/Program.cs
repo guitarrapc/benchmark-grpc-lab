@@ -26,7 +26,7 @@ namespace Cdk
     {
         public DateTime ExecuteTime { get; set; }
         public string ReportId { get; set; }
-        public int DaysKeepReports { get; set; } = 14;
+        public int DaysKeepReports { get; set; } = 7;
 
         public ReportStackProps()
         {
