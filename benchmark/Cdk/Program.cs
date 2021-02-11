@@ -29,6 +29,7 @@ namespace Cdk
         public DateTime ExecuteTime { get; set; }
         public string ReportId { get; set; }
         public int DaysKeepReports { get; set; } = 7;
+        public bool UseVersionedS3 { get; set; }
 
         public ReportStackProps()
         {

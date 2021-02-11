@@ -28,3 +28,31 @@ cdk synth
 cdk bootstrap # only on initial execution
 cdk deploy
 ```
+
+## Destroy TIPS
+
+* cdk destoy failed because instance remain on service discovery.
+
+use script to remove all instances from service discovery.
+
+```csharp
+async Task Main()
+{
+    var serviceName = "server";
+    var client = new Amazon.ServiceDiscovery.AmazonServiceDiscoveryClient();
+    var services = await client.ListServicesAsync(new ListServicesRequest());
+    var service = services.Services.First(x => x.Name == serviceName);
+    var instances = await client.ListInstancesAsync(new ListInstancesRequest
+    {
+        ServiceId = service.Id,
+    });
+    foreach (var instance in instances.Instances)
+    {
+        await client.DeregisterInstanceAsync(new DeregisterInstanceRequest
+        {
+            InstanceId = instance.Id,
+            ServiceId = service.Id,
+        });
+    }
+}
+```

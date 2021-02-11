@@ -1,5 +1,4 @@
 using Amazon.CDK;
-using Amazon.CDK.AWS.AppMesh;
 using Amazon.CDK.AWS.AutoScaling;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.Ecr.Assets;
@@ -26,22 +25,24 @@ namespace Cdk
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
-            // s3 deploy
+            // s3
             var s3 = new Bucket(this, "Bucket", new BucketProps
             {
                 AutoDeleteObjects = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 AccessControl = BucketAccessControl.PRIVATE,
-                Versioned = true,
+                Versioned = stackProps.UseVersionedS3,
             });
-            s3.AddLifecycleRule(new LifecycleRule
+            var lifecycleRule = new LifecycleRule
             {
                 Enabled = true,
                 Prefix = "reports/",
-                Expiration = Duration.Days(stackProps.DaysKeepReports), // keep only 14day and auto delete old reports
-                NoncurrentVersionExpiration = Duration.Days(stackProps.DaysKeepReports),
+                Expiration = Duration.Days(stackProps.DaysKeepReports),
                 AbortIncompleteMultipartUploadAfter = Duration.Days(1),
-            });
+            };
+            if (stackProps.UseVersionedS3)
+                lifecycleRule.NoncurrentVersionExpiration = Duration.Days(stackProps.DaysKeepReports);
+            s3.AddLifecycleRule(lifecycleRule);
             s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
             {
                 Sid = "AllowPublicRead",
@@ -58,6 +59,8 @@ namespace Cdk
                 Actions = new[] { "s3:*" },
                 Resources = new[] { $"{s3.BucketArn}/*" },
             }));
+
+            // s3 deploy
             var masterDllDeployment = new BucketDeployment(this, "DeployMasterDll", new BucketDeploymentProps
             {
                 DestinationBucket = s3,
@@ -213,6 +216,7 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
 ".Replace("\r\n", "\n"));
             asg.UserData.AddSignalOnExitCommand(asg);
             asg.Node.AddDependency(masterDllDeployment);
+            asg.Node.AddDependency(userdataDeployment);
             // could not roll back to desired count = 1
             new CfnScheduledAction(this, "ScheduleOut", new CfnScheduledActionProps
             {
