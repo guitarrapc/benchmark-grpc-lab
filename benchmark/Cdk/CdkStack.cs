@@ -246,8 +246,8 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
             {
                 ExecutionRole = iamEcsTaskExecuteRole,
                 TaskRole = iamWorkerTaskDefRole,
-                Cpu = 256,
-                MemoryLimitMiB = 512,
+                Cpu = stackProps.WorkerFargateSpec.CpuSize,
+                MemoryLimitMiB = stackProps.WorkerFargateSpec.MemorySize,
             });
             dframeWorkerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
             {
@@ -290,8 +290,8 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
             {
                 ExecutionRole = iamEcsTaskExecuteRole,
                 TaskRole = iamDFrameTaskDefRole,
-                Cpu = 256,
-                MemoryLimitMiB = 512,
+                Cpu = stackProps.MasterFargateSpec.CpuSize,
+                MemoryLimitMiB = stackProps.MasterFargateSpec.MemorySize,
             });
             dframeMasterTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
             {

@@ -31,7 +31,8 @@ namespace ConsoleAppEcs
             {
                 // master
                 // 10 100 200 <- BenchServer CPU 100% / Fargate Task CPU 100%
-                args = "request -processCount 5 -workerPerProcess 50 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
+                //args = "request -processCount 5 -workerPerProcess 50 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -53,7 +54,7 @@ namespace ConsoleAppEcs
                 })
                 .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
                 {
-                    Timeout = TimeSpan.FromMinutes(20),
+                    Timeout = TimeSpan.FromMinutes(60),
                     OnExecuteResult = (results, option, scenario) =>
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
