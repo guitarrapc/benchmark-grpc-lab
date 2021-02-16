@@ -41,7 +41,7 @@ namespace Benchmark.ClientLib.Reports
     }
     public record HtmlBenchReportClientResultSummaryItem
     {
-        public int ClientCount { get; init; }
+        public int RequestCount { get; init; }
         public TimeSpan Duration { get; init; }
         public double Rps { get; init; }
     }

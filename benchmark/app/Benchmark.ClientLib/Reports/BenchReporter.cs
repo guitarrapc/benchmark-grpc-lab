@@ -3,10 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Benchmark.ClientLib.Reports
 {
@@ -16,20 +14,21 @@ namespace Benchmark.ClientLib.Reports
         private readonly List<BenchReportItem> _items;
 
         public string ReportId { get; }
-        public string Name { get; }
+        public string ClientId { get; }
         public string ExecuteId { get; }
 
-        public BenchReporter(string reportId, string executeId, string name, string framework = "MagicOnion")
+        public BenchReporter(string reportId, string clientId, string executeId, string framework = "MagicOnion")
         {
             ReportId = reportId;
-            Name = name;
+            ClientId = clientId;
             ExecuteId = executeId;
 
             _report = new BenchReport
             {
-                ReportId = reportId,
-                ExecuteId = executeId,
-                Client = name,
+                ReportId = ReportId,
+                ClientId = ClientId,
+                ExecuteId = ExecuteId,
+                HostName = Dns.GetHostName(),
                 OS = ShortOs(RuntimeInformation.OSDescription),
                 OsArchitecture = RuntimeInformation.OSArchitecture.ToString(),
                 ProcessArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
@@ -82,7 +81,7 @@ namespace Benchmark.ClientLib.Reports
 
         public string GetJsonFileName()
         {
-            return Name + "-" + ExecuteId + ".json";
+            return ClientId + "-" + ExecuteId + ".json";
         }
 
         /// <summary>

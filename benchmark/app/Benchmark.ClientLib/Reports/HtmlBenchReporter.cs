@@ -32,11 +32,11 @@ namespace Benchmark.ClientLib.Reports
             var summary = new HtmlBenchReportSummary
             {
                 ReportId = reports.Select(x => x.ReportId).First(),
-                Clients = reports.Length,
+                Clients = reports.GroupBy(x => x.ClientId).Count(),
                 RequestTotal = requests,
                 Begin = reports.Select(x => x.Begin).OrderBy(x => x).First(),
                 End = reports.Select(x => x.End).OrderByDescending(x => x).First(),
-                Rps = requests / AverageTimeSpan(durations).TotalSeconds,
+                Rps = requests / SumTimeSpan(durations).TotalSeconds,
                 DurationTotal = SumTimeSpan(durations),
                 DurationAvg = AverageTimeSpan(durations),
                 DurationMax = MaxTimeSpan(durations),
@@ -44,24 +44,25 @@ namespace Benchmark.ClientLib.Reports
             };
             var unaryClientResult = new HtmlBenchReportClientResult
             {
-                SummaryItems = GetClientSummaryItems(unaryItems.Where(x => x.RequestCount != 0).OrderBy(x => x.RequestCount)),
+                SummaryItems = GetClientSummaryItems(unaryItems.Where(x => x.RequestCount != 0)
+                    .OrderBy(x => x.RequestCount)),
                 Errors = unaryItems.Sum(x => x.Errors),
                 ClientDurationItems = generateDetail
                     ? unaryItems.OrderBy(x => x.Begin)
-                        .GroupBy(x => (x.ExecuteId, x.Client))
-                        .Select(xs => (Client: xs.Key.Client, Items: xs
+                        .GroupBy(x => (x.ExecuteId, x.ClientId))
+                        .Select(xs => (Client: xs.Key.ClientId, Items: xs
                             .Where(x => x.RequestCount != 0)
-                            .GroupBy(x => x.RequestCount)
+                            .GroupBy(x => x.ClientId)
                                 .Select(xs =>
                                 {
                                     return new HtmlBenchReportClientResultClientDurationItem
                                     {
-                                        ClientCount = xs.Key,
+                                        ClientCount = xs.Count(),
                                         SummaryItems = xs.Select(x =>
                                         {
                                             return new HtmlBenchReportClientResultSummaryItem
                                             {
-                                                ClientCount = x.RequestCount,
+                                                RequestCount = x.RequestCount,
                                                 Duration = x.Duration,
                                                 Rps = x.RequestCount / x.Duration.TotalSeconds,
                                             };
@@ -82,8 +83,8 @@ namespace Benchmark.ClientLib.Reports
                 Errors = unaryItems.Sum(x => x.Errors),
                 ClientDurationItems = generateDetail 
                     ? unaryItems.OrderBy(x => x.Begin)
-                        .GroupBy(x => (x.ExecuteId, x.Client))
-                        .Select(xs => (Client: xs.Key.Client, Items: xs
+                        .GroupBy(x => (x.ExecuteId, x.ClientId))
+                        .Select(xs => (Client: xs.Key.ClientId, Items: xs
                             .Where(x => x.RequestCount != 0)
                             .GroupBy(x => x.RequestCount)
                                 .Select(xs =>
@@ -117,8 +118,8 @@ namespace Benchmark.ClientLib.Reports
                 Errors = hubItems.Sum(x => x.Errors),
                 ClientDurationItems = generateDetail
                     ? hubItems.OrderBy(x => x.Begin)
-                            .GroupBy(x => (x.ExecuteId, x.Client))
-                            .Select(xs => (Client: xs.Key.Client, Items: xs
+                            .GroupBy(x => (x.ExecuteId, x.ClientId))
+                            .Select(xs => (Client: xs.Key.ClientId, Items: xs
                                 .Where(x => x.RequestCount != 0)
                                 .GroupBy(x => x.RequestCount)
                                     .Select(xs =>
@@ -162,10 +163,10 @@ namespace Benchmark.ClientLib.Reports
             return sources.GroupBy(x => x.RequestCount)
                 .Select(xs =>
                 {
-                    var duration = AverageTimeSpan(xs.Select(x => x.Duration));
+                    var duration = SumTimeSpan(xs.Select(x => x.Duration));
                     return new HtmlBenchReportClientResultSummaryItem
                     {
-                        ClientCount = xs.Key,
+                        RequestCount = xs.Key,
                         Duration = duration,
                         Rps = xs.Select(x => x.RequestCount).Sum() / duration.TotalSeconds,
                     };
@@ -179,7 +180,7 @@ namespace Benchmark.ClientLib.Reports
             return sources.GroupBy(x => x.RequestCount)
                 .Select(xs =>
                 {
-                    var duration = AverageTimeSpan(xs.Select(x => x.Duration));
+                    var duration = SumTimeSpan(xs.Select(x => x.Duration));
                     return new HtmlBenchReportRequestResultSummaryItem
                     {
                         RequestCount = xs.Key,

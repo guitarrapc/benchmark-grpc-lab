@@ -136,11 +136,11 @@ namespace Benchmark.ClientLib
             this.Write(" rps</td>\r\n                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", summary.DurationTotal.TotalSeconds)));
             this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", summary.DurationAvg.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationAvg.TotalSeconds)));
             this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", summary.DurationMin.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMin.TotalSeconds)));
             this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", summary.DurationMax.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMax.TotalSeconds)));
             this.Write(@" sec</td>
                         </tr>
                         </tbody>
@@ -163,7 +163,7 @@ namespace Benchmark.ClientLib
                     "</td>\r\n                        ");
  foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", item.Duration.TotalSeconds)));
             this.Write(" sec</td>\r\n                        ");
  } 
             this.Write("                            <td>");
@@ -196,7 +196,7 @@ namespace Benchmark.ClientLib
                     "</td>\r\n                        ");
  foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", item.Duration.TotalSeconds)));
             this.Write(" sec</td>\r\n                        ");
  } 
             this.Write("                            <td>");
@@ -228,7 +228,7 @@ namespace Benchmark.ClientLib
                                 ");
  foreach(var item in unaryClientResult.SummaryItems) { 
             this.Write("                                    \"");
-            this.Write(this.ToStringHelper.ToStringWithCulture(item.ClientCount));
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
             this.Write("\",\r\n                                ");
  } 
             this.Write(@"                                ],

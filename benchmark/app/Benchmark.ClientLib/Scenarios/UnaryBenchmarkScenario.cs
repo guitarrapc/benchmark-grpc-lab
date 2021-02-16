@@ -33,7 +33,7 @@ namespace Benchmark.ClientLib.Scenarios
                 _reporter.AddBenchDetail(new BenchReportItem
                 {
                     ExecuteId = _reporter.ExecuteId,
-                    Client = _reporter.Name,
+                    ClientId = _reporter.ClientId,
                     TestName = nameof(PlainTextAsync),
                     Begin = statistics.Begin,
                     End = DateTime.UtcNow,

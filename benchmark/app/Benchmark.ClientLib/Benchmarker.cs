@@ -20,12 +20,14 @@ namespace Benchmark.ClientLib
         private readonly string _path;
         private readonly ILogger _logger;
         private readonly CancellationToken _cancellationToken;
+        private readonly string _clientId;
 
         public Benchmarker(string path, ILogger logger, CancellationToken cancellationToken)
         {
             _path = path;
             _logger = logger;
             _cancellationToken = cancellationToken;
+            _clientId = Guid.NewGuid().ToString();
         }
 
         public static string NewReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();
@@ -44,7 +46,7 @@ namespace Benchmark.ClientLib
             _logger?.LogInformation($"reportId: {reportId}");
             _logger?.LogInformation($"executeId: {executeId}");
 
-            var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
+            var reporter = new BenchReporter(reportId, _clientId, executeId);
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {
@@ -89,7 +91,7 @@ namespace Benchmark.ClientLib
             _logger?.LogInformation($"reportId: {reportId}");
             _logger?.LogInformation($"executeId: {executeId}");
 
-            var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
+            var reporter = new BenchReporter(reportId, _clientId, executeId);
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {
@@ -129,7 +131,7 @@ namespace Benchmark.ClientLib
             _logger?.LogInformation($"reportId: {reportId}");
             _logger?.LogInformation($"executeId: {executeId}");
 
-            var reporter = new BenchReporter(reportId, executeId, Dns.GetHostName());
+            var reporter = new BenchReporter(reportId, _clientId, executeId);
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {

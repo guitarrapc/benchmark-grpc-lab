@@ -95,9 +95,9 @@
                             <td><#= summary.End #></td>
                             <td><#= string.Format("{0:f2}", summary.Rps) #> rps</td>
                             <td><#= string.Format("{0:f2}", summary.DurationTotal.TotalSeconds) #> sec</td>
-                            <td><#= string.Format("{0:f2}", summary.DurationAvg.TotalSeconds) #> sec</td>
-                            <td><#= string.Format("{0:f2}", summary.DurationMin.TotalSeconds) #> sec</td>
-                            <td><#= string.Format("{0:f2}", summary.DurationMax.TotalSeconds) #> sec</td>
+                            <td><#= string.Format("{0:f3}", summary.DurationAvg.TotalSeconds) #> sec</td>
+                            <td><#= string.Format("{0:f3}", summary.DurationMin.TotalSeconds) #> sec</td>
+                            <td><#= string.Format("{0:f3}", summary.DurationMax.TotalSeconds) #> sec</td>
                         </tr>
                         </tbody>
                     </table>
@@ -116,7 +116,7 @@
                         <tr>
                             <td>Duration</td>
                         <# foreach(var item in unaryRequestResult.SummaryItems) { #>
-                            <td><#= string.Format("{0:f2}", item.Duration.TotalSeconds) #> sec</td>
+                            <td><#= string.Format("{0:f3}", item.Duration.TotalSeconds) #> sec</td>
                         <# } #>
                             <td><#= unaryRequestResult.Errors #></td>
                         </tr>
@@ -143,7 +143,7 @@
                         <tr>
                             <td>Duration</td>
                         <# foreach(var item in hubRequestResult.SummaryItems) { #>
-                            <td><#= string.Format("{0:f2}", item.Duration.TotalSeconds) #> sec</td>
+                            <td><#= string.Format("{0:f3}", item.Duration.TotalSeconds) #> sec</td>
                         <# } #>
                             <td><#= hubRequestResult.Errors #></td>
                         </tr>
@@ -170,7 +170,7 @@
                             data: {
                                 labels: [
                                 <# foreach(var item in unaryClientResult.SummaryItems) { #>
-                                    "<#= item.ClientCount #>",
+                                    "<#= item.RequestCount #>",
                                 <# } #>
                                 ],
                                 datasets: [
