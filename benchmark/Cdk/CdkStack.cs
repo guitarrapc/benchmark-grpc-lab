@@ -124,6 +124,7 @@ namespace Cdk
             // MagicOnion
             var asg = new AutoScalingGroup(this, "MagicOnionAsg", new AutoScalingGroupProps
             {
+                // Monitoring is default DETAILED.
                 SpotPrice = "0.01", // 0.0096 for spot price average
                 Vpc = vpc,
                 SecurityGroup = sg,
