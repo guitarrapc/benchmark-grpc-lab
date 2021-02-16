@@ -29,6 +29,38 @@ cdk bootstrap # only on initial execution
 cdk deploy
 ```
 
+## Deploy TIPS
+
+* Use Datadog to monitor benchmark ec2 and fargate metrics.
+
+CDK template use AWS SecretsManager to keep datadog token.
+Please create secret and put your datadog token to it.
+
+```shell
+SECRET_ID=magiconion-benchmark-datadog-token
+DD_TOKEN=abcdefg12345
+aws secretsmanager create-secret --name "$SECRET_ID"
+aws secretsmanager put-secret-value --secret-id "$SECRET_ID" --secret-string "${DD_TOKEN}"
+```
+
+Confirm token is successfully set to secrets manager.
+
+```shell
+aws secretsmanager describe-secret --secret-id "$SECRET_ID"
+aws secretsmanager get-secret-value --secret-id "$SECRET_ID"
+```
+
+To install Datadog agent to ec2 or fargate, set `true` for `ReportStackProps` Propery.
+
+```csharp
+new ReportStackProps
+{
+    UseEc2DatadogAgentProfiler = true, // install datadog agent to MagicOnion Ec2.
+    UseFargateDatadogAgentProfiler = true, // instance datadog fargate agent to bench master/worker.
+    UseEc2CloudWatchAgentProfiler = false, // true to install cloudwatch agent to magiconion ec2
+}
+```
+
 ## Destroy TIPS
 
 * cdk destoy failed because instance remain on service discovery.

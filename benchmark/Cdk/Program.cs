@@ -12,7 +12,10 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
-                RecreateMagicOnion = false,
+                ForceRecreateMagicOnion = false,
+                UseEc2CloudWatchAgentProfiler = true,
+                UseEc2DatadogAgentProfiler = false,
+                UseFargateDatadogAgentProfiler = true,
                 MasterFargateSpec = new FargateSpec(CpuSpec.Half, MemorySpec.Low),
                 WorkerFargateSpec = new FargateSpec(CpuSpec.Quater, MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
@@ -27,12 +30,39 @@ namespace Cdk
 
     public class ReportStackProps : StackProps
     {
-        public bool RecreateMagicOnion { get; set; }
+        /// <summary>
+        /// Flag to force recreate MagicOnion Ec2 Server
+        /// </summary>
+        public bool ForceRecreateMagicOnion { get; set; }
+        /// <summary>
+        /// Execution time
+        /// </summary>
         public DateTime ExecuteTime { get; set; }
         public string ReportId { get; set; }
+        /// <summary>
+        /// Number of days to keep reports in S3 bucket.
+        /// </summary>
         public int DaysKeepReports { get; set; } = 7;
         public bool UseVersionedS3 { get; set; }
+        /// <summary>
+        /// Install CloudWatch Agent to EC2 MagicOnion and get MemoryUsage / TCP Established metrics.
+        /// </summary>
+        public bool UseEc2CloudWatchAgentProfiler { get; set; }
+        /// <summary>
+        /// Install Datadog Agent to EC2 MagicOnion.
+        /// </summary>
+        public bool UseEc2DatadogAgentProfiler { get; set; }
+        /// <summary>
+        /// Install Datadog Agent as Fargate sidecar container.
+        /// </summary>
+        public bool UseFargateDatadogAgentProfiler { get; set; }
+        /// <summary>
+        /// Fargate Spec of Dframe master 
+        /// </summary>
         public FargateSpec MasterFargateSpec { get; set; }
+        /// <summary>
+        /// Fargate Spec of Dframe worker
+        /// </summary>
         public FargateSpec WorkerFargateSpec { get; set; }
 
         public ReportStackProps()

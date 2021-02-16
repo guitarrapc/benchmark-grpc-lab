@@ -7,6 +7,7 @@ using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Deployment;
+using Amazon.CDK.AWS.SecretsManager;
 using Amazon.CDK.AWS.ServiceDiscovery;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace Cdk
         {
             var stackProps = ReportStackProps.ParseOrDefault(props);
             // recreate MagicOnion Ec2 via renew userdata
-            var recreateMagicOnionTrigger = stackProps.RecreateMagicOnion ? $"echo {stackProps.ExecuteTime}" : "";
+            var recreateMagicOnionTrigger = stackProps.ForceRecreateMagicOnion ? $"echo {stackProps.ExecuteTime}" : "";
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
 
@@ -115,6 +116,11 @@ namespace Cdk
             var iamDFrameTaskDefRole = GetIamEcsDframeTaskDefRole(s3);
             var iamWorkerTaskDefRole = GetIamEcsWorkerTaskDefRole(s3);
 
+            // secrets
+            var ddToken = stackProps.UseEc2DatadogAgentProfiler || stackProps.UseFargateDatadogAgentProfiler
+                ? Amazon.CDK.AWS.SecretsManager.Secret.FromSecretNameV2(this, "dd-token", "magiconion-benchmark-datadog-token")
+                : null;
+
             // MagicOnion
             var asg = new AutoScalingGroup(this, "MagicOnionAsg", new AutoScalingGroupProps
             {
@@ -143,80 +149,13 @@ namespace Cdk
                     Timeout = Duration.Minutes(10),
                 }),
             });
-            asg.AddUserData(@$"#!/bin/bash
-{recreateMagicOnionTrigger}
-# install .NET 5
-rpm -Uvh https://packages.microsoft.com/config/centos/7/packages-microsoft-prod.rpm
-yum install -y dotnet-sdk-5.0 aspnetcore-runtime-5.0
-. /etc/profile.d/dotnet-cli-tools-bin-path.sh
-# download server
-mkdir -p /var/MagicOnion.Benchmark/server
-aws s3 sync --exact-timestamps s3://{s3.BucketName}/assembly/linux/server/ ~/server
-chmod +x ~/server/Benchmark.Server
-cp -Rf ~/server/ /var/MagicOnion.Benchmark/.
-cp -f /var/MagicOnion.Benchmark/server/Benchmark.Server.service /etc/systemd/system/.
-systemctl enable Benchmark.Server
-systemctl restart Benchmark.Server
-
-# cloudmap
-EC2_METADATA=http://169.254.169.254/latest
-INSTANCE_ID=$(curl -s $EC2_METADATA/meta-data/instance-id);
-INSTANCE_IP=$(curl -s $EC2_METADATA/meta-data/local-ipv4);
-
-sudo cat > /etc/init.d/cloudmap-register <<-EOF
-#! /bin/bash -ex
-aws servicediscovery register-instance \
-    --region {this.Region} \
-    --service-id {serviceDiscoveryServer.ServiceId} \
-    --instance-id $INSTANCE_ID \
-    --attributes AWS_INSTANCE_IPV4=$INSTANCE_IP,AWS_INSTANCE_PORT=80
-exit 0
-EOF
-chmod a+x /etc/init.d/cloudmap-register
-
-sudo cat > /etc/init.d/cloudmap-deregister <<-EOF
-#! /bin/bash -ex
-aws servicediscovery deregister-instance \
- --region {this.Region} \
- --service-id {serviceDiscoveryServer.ServiceId} \
- --instance-id $INSTANCE_ID
-exit 0
-EOF
-chmod a+x /etc/init.d/cloudmap-deregister
-
-cat > /usr/lib/systemd/system/cloudmap.service <<-EOF
-[Unit]
-Description=Run CloudMap service
-Requires=network-online.target network.target
-DefaultDependencies=no
-Before=shutdown.target reboot.target halt.target
-
-[Service]
-Type=oneshot
-KillMode=none
-RemainAfterExit=yes
-ExecStart=/etc/init.d/cloudmap-register
-ExecStop=/etc/init.d/cloudmap-deregister
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl enable cloudmap.service
-systemctl start  cloudmap.service
-
-# install cloudwatch
-aws s3 sync --exact-timestamps s3://{s3.BucketName}/userdata/ ~/userdata
-chmod 600 ~/userdata/amazon-cloudwatch-agent.json
-rpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
-cp ~/userdata/amazon-cloudwatch-agent.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
-/opt/aws/amazon-cloudwatch-agent/bin/config-translator --input /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json --output /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml --mode ec2
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start
-".Replace("\r\n", "\n"));
+            asg.AddSecretsReadGrant(ddToken, stackProps.UseEc2DatadogAgentProfiler);
+            var userdata = GetUserData(recreateMagicOnionTrigger, s3.BucketName, serviceDiscoveryServer.ServiceId, stackProps.UseEc2CloudWatchAgentProfiler, stackProps.UseEc2DatadogAgentProfiler);
+            asg.AddUserData(userdata);
             asg.UserData.AddSignalOnExitCommand(asg);
             asg.Node.AddDependency(masterDllDeployment);
             asg.Node.AddDependency(userdataDeployment);
+
             // could not roll back to desired count = 1
             new CfnScheduledAction(this, "ScheduleOut", new CfnScheduledActionProps
             {
@@ -272,6 +211,21 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
                     StreamPrefix = dframeWorkerLogGroup,
                 }),
             });
+            if (stackProps.UseFargateDatadogAgentProfiler)
+            {
+                dframeWorkerTaskDef.AddContainer("worker-datadog", new ContainerDefinitionOptions
+                {
+                    Image = ContainerImage.FromRegistry("datadog/agent:latest"),
+                    Environment = new Dictionary<string, string>
+                    {
+                        { "DD_API_KEY", ddToken.SecretValue.ToString() },
+                        { "ECS_FARGATE","true"},
+                    },
+                    Cpu = 10,
+                    MemoryReservationMiB = 256,
+                    Essential = false,
+                });
+            }
             var dframeWorkerService = new FargateService(this, "DFrameWorkerService", new FargateServiceProps
             {
                 ServiceName = "DFrameWorkerService",
@@ -318,6 +272,21 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
                     StreamPrefix = dframeMasterLogGroup,
                 }),
             });
+            if (stackProps.UseFargateDatadogAgentProfiler)
+            {
+                dframeMasterTaskDef.AddContainer("dframe-datadog", new ContainerDefinitionOptions
+                {
+                    Image = ContainerImage.FromRegistry("datadog/agent:latest"),
+                    Environment = new Dictionary<string, string>
+                    {
+                        { "DD_API_KEY", ddToken.SecretValue.ToString() },
+                        { "ECS_FARGATE","true"},
+                    },
+                    Cpu = 10,
+                    MemoryReservationMiB = 256,
+                    Essential = false,
+                });
+            }
             var dframeMasterService = new FargateService(this, "DFrameMasterService", new FargateServiceProps
             {
                 ServiceName = "DFrameMasterService",
@@ -352,6 +321,101 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
             new CfnOutput(this, "DFrameWorkerEcsTaskdefImage", new CfnOutputProps { Value = dockerImage.ImageUri });
         }
 
+        private string GetUserData(string recreateMagicOnionTrigger, string bucketName, string serviceDiscoveryId, bool useCloudWatchAgent, bool useDatadogAgent)
+        {
+            var source = @$"#!/bin/bash
+{recreateMagicOnionTrigger}";
+
+            // server binary
+            source += @$"
+# install .NET 5
+rpm -Uvh https://packages.microsoft.com/config/centos/7/packages-microsoft-prod.rpm
+yum install -y dotnet-sdk-5.0 aspnetcore-runtime-5.0
+. /etc/profile.d/dotnet-cli-tools-bin-path.sh
+# download server
+mkdir -p /var/MagicOnion.Benchmark/server
+aws s3 sync --exact-timestamps s3://{bucketName}/assembly/linux/server/ ~/server
+chmod +x ~/server/Benchmark.Server
+cp -Rf ~/server/ /var/MagicOnion.Benchmark/.
+cp -f /var/MagicOnion.Benchmark/server/Benchmark.Server.service /etc/systemd/system/.
+systemctl enable Benchmark.Server
+systemctl restart Benchmark.Server";
+
+            // cloudmap
+            source += $@"
+# cloudmap
+EC2_METADATA=http://169.254.169.254/latest
+INSTANCE_ID=$(curl -s $EC2_METADATA/meta-data/instance-id);
+INSTANCE_IP=$(curl -s $EC2_METADATA/meta-data/local-ipv4);
+
+sudo cat > /etc/init.d/cloudmap-register <<-EOF
+#! /bin/bash -ex
+aws servicediscovery register-instance \
+    --region {this.Region} \
+    --service-id {serviceDiscoveryId} \
+    --instance-id $INSTANCE_ID \
+    --attributes AWS_INSTANCE_IPV4=$INSTANCE_IP,AWS_INSTANCE_PORT=80
+exit 0
+EOF
+chmod a+x /etc/init.d/cloudmap-register
+
+sudo cat > /etc/init.d/cloudmap-deregister <<-EOF
+#! /bin/bash -ex
+aws servicediscovery deregister-instance \
+ --region {this.Region} \
+ --service-id {serviceDiscoveryId} \
+ --instance-id $INSTANCE_ID
+exit 0
+EOF
+chmod a+x /etc/init.d/cloudmap-deregister
+
+cat > /usr/lib/systemd/system/cloudmap.service <<-EOF
+[Unit]
+Description=Run CloudMap service
+Requires=network-online.target network.target
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+
+[Service]
+Type=oneshot
+KillMode=none
+RemainAfterExit=yes
+ExecStart=/etc/init.d/cloudmap-register
+ExecStop=/etc/init.d/cloudmap-deregister
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable cloudmap.service
+systemctl start  cloudmap.service";
+
+            // datadog profiler
+            if (useDatadogAgent)
+            {
+                source += @$"
+# install datadog agent
+yum install -y jq
+export DD_API_KEY=$(aws secretsmanager get-secret-value --secret-id magiconion-benchmark-datadog-token --region {Region} | jq '.SecretString' | jq -r .)
+bash -c ""$(curl -L https://raw.githubusercontent.com/DataDog/datadog-agent/master/cmd/agent/install_script.sh)""";
+            }
+
+            // cloudwatch profiler
+            if (useCloudWatchAgent)
+            {
+                source += @$"
+# install cloudwatch
+aws s3 sync --exact-timestamps s3://{bucketName}/userdata/ ~/userdata
+chmod 600 ~/userdata/amazon-cloudwatch-agent.json
+rpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+cp ~/userdata/amazon-cloudwatch-agent.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
+/opt/aws/amazon-cloudwatch-agent/bin/config-translator --input /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json --output /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.toml --mode ec2
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a start";
+            }
+
+            return source.Replace("\r\n", "\n");
+        }
         private Role GetIamEc2MagicOnionRole(Bucket s3, Service meshService)
         {
             var policy = new Policy(this, "Ec2MagicOnionPolicy", new PolicyProps
@@ -373,10 +437,17 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
                         Actions = new[] { "s3:GetObject" },
                         Resources = new[] { $"{s3.BucketArn}/*" },
                     }),
+                    // service discovery
                     new PolicyStatement(new PolicyStatementProps
                     {
                         Actions = new[] { "servicediscovery:RegisterInstance", "servicediscovery:DeregisterInstance"},
                         Resources = new[] { meshService.ServiceArn },
+                    }),
+                    // datadog
+                    new PolicyStatement(new PolicyStatementProps
+                    {
+                        Actions = new[] { "ec2:DescribeInstanceStatus", "ec2:DescribeSecurityGroups", "ec2:DescribeInstances"},
+                        Resources = new[] { "arn:aws:ec2:::*" },
                     }),
                 }
             });
@@ -415,7 +486,6 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
             role.AddManagedPolicy(ManagedPolicy.FromManagedPolicyArn(this, "WorkerECSTaskExecutionRolePolicy", "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"));
             return role;
         }
-
         private Role GetIamEcsDframeTaskDefRole(Bucket s3)
         {
             var policy = new Policy(this, "DframeTaskDefTaskPolicy", new PolicyProps
@@ -517,4 +587,16 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
             return role;
         }
     }
+
+    public static class AutoscalingGroupExtensions
+    {
+        public static void AddSecretsReadGrant(this AutoScalingGroup asg, ISecret secret, bool enable)
+        {
+            if (enable)
+            {
+                secret.GrantRead(asg);
+            }
+        }
+    }
+
 }
