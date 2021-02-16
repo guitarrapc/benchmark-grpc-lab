@@ -34,7 +34,7 @@ cdk deploy
 * Use Datadog to monitor benchmark ec2 and fargate metrics.
 
 CDK template use AWS SecretsManager to keep datadog token.
-Please create secret and put your datadog token to it.
+First, create datadog token secret with secret-id `magiconion-benchmark-datadog-token` via aws cli.
 
 ```shell
 SECRET_ID=magiconion-benchmark-datadog-token
@@ -50,7 +50,8 @@ aws secretsmanager describe-secret --secret-id "$SECRET_ID"
 aws secretsmanager get-secret-value --secret-id "$SECRET_ID"
 ```
 
-To install Datadog agent to ec2 or fargate, set `true` for `ReportStackProps` Propery.
+To install Datadog agent to ec2 or fargate, set `true` in `ReportStackProps` Property.
+EC2 MagicOnion also support install CloudWatch Agent, this agent will collect Mem used and TCP status.
 
 ```csharp
 new ReportStackProps
