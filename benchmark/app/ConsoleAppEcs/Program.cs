@@ -36,6 +36,7 @@ namespace ConsoleAppEcs
                 //args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 150 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 20 -workerPerProcess 10 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
                 args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName GrpcWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -101,6 +102,7 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //path = "sample-bucket";
             var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
+
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
         }
@@ -138,12 +140,12 @@ namespace ConsoleAppEcs
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
-            var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
             //_hostAddress = "http://localhost:5000";
             //_reportId = "abc-123";
             //path = "sample-bucket";
-            Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
+            var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
 
+            Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
         }
         public override async Task ExecuteAsync(WorkerContext context)

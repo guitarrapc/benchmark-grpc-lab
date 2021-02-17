@@ -8,6 +8,11 @@ using System.Runtime.InteropServices;
 
 namespace Benchmark.ClientLib.Reports
 {
+    public enum Framework
+    {
+        MagicOnion,
+        GrpcDotnet,
+    }
     public class BenchReporter
     {
         private readonly BenchReport _report;
@@ -17,7 +22,7 @@ namespace Benchmark.ClientLib.Reports
         public string ClientId { get; }
         public string ExecuteId { get; }
 
-        public BenchReporter(string reportId, string clientId, string executeId, string framework = "MagicOnion")
+        public BenchReporter(string reportId, string clientId, string executeId, Framework framework = Framework.MagicOnion)
         {
             ReportId = reportId;
             ClientId = clientId;
@@ -34,10 +39,22 @@ namespace Benchmark.ClientLib.Reports
                 ProcessArchitecture = RuntimeInformation.ProcessArchitecture.ToString(),
                 CpuNumber = Environment.ProcessorCount,
                 SystemMemory = GetSystemMemory(),
-                Framework = framework,
-                Version = typeof(MagicOnion.IServiceMarker).Assembly.GetName().Version?.ToString(),
+                Framework = framework.ToString(),
+                Version = GetFrameworkVersion(framework),
             };
             _items = new List<BenchReportItem>();
+        }
+
+        private string GetFrameworkVersion(Framework framework)
+        {
+            var type = framework switch
+            {
+                Framework.MagicOnion => typeof(MagicOnion.IServiceMarker),
+                Framework.GrpcDotnet => typeof(Grpc.Net.Client.GrpcChannel),
+                _ => throw new NotImplementedException(),
+            };
+            var version = type.Assembly.GetName().Version?.ToString();
+            return version;
         }
 
         /// <summary>
@@ -83,6 +100,8 @@ namespace Benchmark.ClientLib.Reports
         {
             return ClientId + "-" + ExecuteId + ".json";
         }
+
+        // todo: get server cpu / memory via other UnaryCall
 
         /// <summary>
         /// System Memory for GB

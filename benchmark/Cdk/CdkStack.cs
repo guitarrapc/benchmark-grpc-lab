@@ -163,14 +163,14 @@ namespace Cdk
                     DesiredCapacity = 1,
                     MaxCapacity = 1,
                     // AM9:00 (JST+9)
-                    Schedule = Schedule.Expression("0 0 * 1-5 *"),
+                    Schedule = Schedule.Expression("0 0 * 1-3 *"),
                 });
                 asg.ScaleOnSchedule("ScheduleIn", new BasicScheduledActionProps
                 {
                     DesiredCapacity = 0,
                     MaxCapacity = 0,
                     // AM9:00 (JST+9)
-                    Schedule = Schedule.Expression("0 12 * 1-5 *"),
+                    Schedule = Schedule.Expression("0 12 * 1-7 *"),
                 });
             }
 

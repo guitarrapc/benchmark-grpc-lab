@@ -26,8 +26,8 @@ namespace Benchmark.ClientLib.Reports
                 Architecture = ToJoinedString(reports.Select(x => x.OS).Distinct()),
                 Processors = reports.Select(x => x.CpuNumber).Distinct().OrderByDescending(x => x).First(),
                 Memory = reports.Select(x => x.SystemMemory).Distinct().OrderByDescending(x => x).First(), // take biggest
-                Framework = "MagicOnion",
-                Version = typeof(MagicOnion.IServiceMarker).Assembly.GetName().Version.ToString(),
+                Framework = ToJoinedString(reports.Select(x => x.Framework).Distinct()),
+                Version = ToJoinedString(reports.Select(x => x.Version).Distinct()),
             };
             var summary = new HtmlBenchReportSummary
             {

@@ -186,7 +186,7 @@ namespace Benchmark.ClientLib
             _logger?.LogInformation($"reportId: {reportId}");
             _logger?.LogInformation($"executeId: {executeId}");
 
-            var reporter = new BenchReporter(reportId, _clientId, executeId);
+            var reporter = new BenchReporter(reportId, _clientId, executeId, Framework.GrpcDotnet);
             reporter.Begin();
             {
                 // Connect to the server using gRPC channel.

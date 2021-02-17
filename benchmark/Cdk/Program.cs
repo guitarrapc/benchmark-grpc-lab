@@ -17,9 +17,9 @@ namespace Cdk
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
                 UseFargateDatadogAgentProfiler = true,
-                MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.XLARGE2),
+                MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE),
                 MasterFargateSpec = new FargateSpec(CpuSpec.Half, MemorySpec.Low),
-                WorkerFargateSpec = new FargateSpec(CpuSpec.Double, MemorySpec.Low),
+                WorkerFargateSpec = new FargateSpec(CpuSpec.Single, MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
