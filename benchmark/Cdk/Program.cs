@@ -2,7 +2,6 @@ using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Cdk
 {
@@ -18,9 +17,9 @@ namespace Cdk
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
                 UseFargateDatadogAgentProfiler = true,
-                MagicOnionInstanceType = InstanceType.Of(InstanceClass.STANDARD5_AMD, InstanceSize.LARGE),
+                MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.XLARGE2),
                 MasterFargateSpec = new FargateSpec(CpuSpec.Half, MemorySpec.Low),
-                WorkerFargateSpec = new FargateSpec(CpuSpec.Single, MemorySpec.Low),
+                WorkerFargateSpec = new FargateSpec(CpuSpec.Double, MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
