@@ -1,4 +1,5 @@
 using Amazon.CDK;
+using Amazon.CDK.AWS.EC2;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,8 +18,9 @@ namespace Cdk
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
                 UseFargateDatadogAgentProfiler = true,
+                MagicOnionInstanceType = InstanceType.Of(InstanceClass.STANDARD3, InstanceSize.MEDIUM),
                 MasterFargateSpec = new FargateSpec(CpuSpec.Half, MemorySpec.Low),
-                WorkerFargateSpec = new FargateSpec(CpuSpec.Quater, MemorySpec.Low),
+                WorkerFargateSpec = new FargateSpec(CpuSpec.Single, MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
@@ -61,6 +63,7 @@ namespace Cdk
         /// Install Datadog Agent as Fargate sidecar container.
         /// </summary>
         public bool UseFargateDatadogAgentProfiler { get; set; }
+        public InstanceType MagicOnionInstanceType { get; set; }
         /// <summary>
         /// Fargate Spec of Dframe master 
         /// </summary>

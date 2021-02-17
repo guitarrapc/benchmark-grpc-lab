@@ -129,7 +129,7 @@ namespace Cdk
                 Vpc = vpc,
                 SecurityGroup = sg,
                 VpcSubnets = subnets,
-                InstanceType = InstanceType.Of(InstanceClass.STANDARD3, InstanceSize.MEDIUM),
+                InstanceType = stackProps.MagicOnionInstanceType,
                 DesiredCapacity = 1,
                 MaxCapacity = 1,
                 MinCapacity = 0,
