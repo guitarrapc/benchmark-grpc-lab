@@ -62,7 +62,7 @@ namespace ConsoleAppEcs
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
                         Console.WriteLine("Generating html.");
-                        var benchmarker = new Benchmarker(path, null, cts.Token);
+                        var benchmarker = new Benchmarker(path, null, null, cts.Token);
                         benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
                     },
                 });
@@ -87,31 +87,28 @@ namespace ConsoleAppEcs
     {
         private CancellationTokenSource _cts;
         private string _hostAddress;
-        private string _iterations;
         private string _reportId;
         private Benchmarker _benchmarker;
-        private int current = 0;
 
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("Setup");
-            _iterations = "1,2,5,10,20,50,100,200";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             //_hostAddress = "http://localhost:5000";
             //_reportId = "abc-123";
-            //var path = "sample-bucket";
-            Console.WriteLine($"iterations {_iterations}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-
-            _benchmarker = new Benchmarker(path, null, _cts.Token);
+            //path = "sample-bucket";
+            var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
+            Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
             try
             {
-                await _benchmarker.BenchUnary(_hostAddress, _iterations, _reportId);
+                await _benchmarker.BenchUnary(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -131,31 +128,29 @@ namespace ConsoleAppEcs
     {
         private CancellationTokenSource _cts;
         private string _hostAddress;
-        private string _iterations;
         private string _reportId;
         private Benchmarker _benchmarker;
-        private int current = 0;
 
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("Setup");
-            _iterations = "1,2,5,10,20,50,100,200";
             _cts = new CancellationTokenSource();
             _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
             //_hostAddress = "http://localhost:5000";
             //_reportId = "abc-123";
-            //var path = "sample-bucket";
-            Console.WriteLine($"iterations {_iterations}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
+            //path = "sample-bucket";
+            Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
 
-            _benchmarker = new Benchmarker(path, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
             try
             {
-                await _benchmarker.BenchGrpc(_hostAddress, _iterations, _reportId);
+                await _benchmarker.BenchGrpc(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
