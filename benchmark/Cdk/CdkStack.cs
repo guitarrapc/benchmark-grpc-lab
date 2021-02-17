@@ -125,7 +125,7 @@ namespace Cdk
             var asg = new AutoScalingGroup(this, "MagicOnionAsg", new AutoScalingGroupProps
             {
                 // Monitoring is default DETAILED.
-                SpotPrice = "0.01", // 0.0096 for spot price average
+                SpotPrice = "0.1", // 0.0096 for spot price average for m3.medium
                 Vpc = vpc,
                 SecurityGroup = sg,
                 VpcSubnets = subnets,
@@ -156,23 +156,21 @@ namespace Cdk
             asg.UserData.AddSignalOnExitCommand(asg);
             asg.Node.AddDependency(masterDllDeployment);
             asg.Node.AddDependency(userdataDeployment);
-
             if (stackProps.EnableCronScaleInEc2)
             {
-                // could not roll back to desired count = 1
-                new CfnScheduledAction(this, "ScheduleOut", new CfnScheduledActionProps
+                asg.ScaleOnSchedule("ScheduleOut", new BasicScheduledActionProps
                 {
-                    AutoScalingGroupName = asg.AutoScalingGroupName,
                     DesiredCapacity = 1,
-                    MaxSize = 1,
-                    Recurrence = "0 0 * 1-5 *", // AM9:00 (JST+9)
+                    MaxCapacity = 1,
+                    // AM9:00 (JST+9)
+                    Schedule = Schedule.Expression("0 0 * 1-5 *"),
                 });
-                new CfnScheduledAction(this, "ScheduleIn", new CfnScheduledActionProps
+                asg.ScaleOnSchedule("ScheduleIn", new BasicScheduledActionProps
                 {
-                    AutoScalingGroupName = asg.AutoScalingGroupName,
                     DesiredCapacity = 0,
-                    MaxSize = 0,
-                    Recurrence = "0 12 * 1-5 *", // PM21:00 (JST+9)
+                    MaxCapacity = 0,
+                    // AM9:00 (JST+9)
+                    Schedule = Schedule.Expression("0 12 * 1-5 *"),
                 });
             }
 
