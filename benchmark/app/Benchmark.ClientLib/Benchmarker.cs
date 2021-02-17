@@ -7,6 +7,7 @@ using Benchmark.ClientLib.Utils;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -21,6 +22,7 @@ namespace Benchmark.ClientLib
         private readonly ILogger _logger;
         private readonly CancellationToken _cancellationToken;
         private readonly string _clientId;
+        private ConcurrentDictionary<string, GrpcChannel> _channelCache;
 
         public Benchmarker(string path, ILogger logger, CancellationToken cancellationToken)
         {
@@ -28,6 +30,7 @@ namespace Benchmark.ClientLib
             _logger = logger;
             _cancellationToken = cancellationToken;
             _clientId = Guid.NewGuid().ToString();
+            _channelCache = new ConcurrentDictionary<string, GrpcChannel>();
         }
 
         public static string NewReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();
@@ -50,11 +53,11 @@ namespace Benchmark.ClientLib
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {
+                // Connect to the server using gRPC channel.
+                var channel = _channelCache.GetOrAdd(hostAddress, GrpcChannel.ForAddress(hostAddress));
+
                 foreach (var iteration in iterationInts)
                 {
-                    // Connect to the server using gRPC channel.
-                    var channel = GrpcChannel.ForAddress(hostAddress);
-
                     // Unary
                     _logger?.LogInformation($"Begin unary {iteration} requests.");
                     var unary = new UnaryBenchmarkScenario(channel, reporter);
@@ -95,11 +98,11 @@ namespace Benchmark.ClientLib
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {
+                // Connect to the server using gRPC channel.
+                var channel = _channelCache.GetOrAdd(hostAddress, GrpcChannel.ForAddress(hostAddress));
+
                 foreach (var iteration in iterationInts)
                 {
-                    // Connect to the server using gRPC channel.
-                    var channel = GrpcChannel.ForAddress(hostAddress);
-
                     // Unary
                     _logger?.LogInformation($"Begin unary {iteration} requests.");
                     var unary = new UnaryBenchmarkScenario(channel, reporter);
@@ -135,11 +138,11 @@ namespace Benchmark.ClientLib
             var iterationInts = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
             reporter.Begin();
             {
+                // Connect to the server using gRPC channel.
+                var channel = _channelCache.GetOrAdd(hostAddress, GrpcChannel.ForAddress(hostAddress));
+
                 foreach (var iteration in iterationInts)
                 {
-                    // Connect to the server using gRPC channel.
-                    var channel = GrpcChannel.ForAddress(hostAddress);
-
                     // StreamingHub
                     _logger?.LogInformation($"Begin Streaming {iteration} requests.");
                     await using var hub = new HubBenchmarkScenario(channel, reporter);

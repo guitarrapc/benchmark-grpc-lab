@@ -136,12 +136,12 @@ namespace Benchmark.ClientLib
             this.Write(" rps</td>\r\n                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", summary.DurationTotal.TotalSeconds)));
             this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationAvg.TotalSeconds)));
-            this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMin.TotalSeconds)));
-            this.Write(" sec</td>\r\n                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMax.TotalSeconds)));
-            this.Write(@" sec</td>
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationAvg.TotalMilliseconds)));
+            this.Write(" ms</td>\r\n                            <td>");
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMin.TotalMilliseconds)));
+            this.Write(" ms</td>\r\n                            <td>");
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMax.TotalMilliseconds)));
+            this.Write(@" ms</td>
                         </tr>
                         </tbody>
                     </table>
@@ -163,7 +163,7 @@ namespace Benchmark.ClientLib
                     "</td>\r\n                        ");
  foreach(var item in unaryRequestResult.SummaryItems) { 
             this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", item.Duration.TotalSeconds)));
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
             this.Write(" sec</td>\r\n                        ");
  } 
             this.Write("                            <td>");
@@ -178,43 +178,7 @@ namespace Benchmark.ClientLib
             this.Write(@"                        </tr>
                         </tbody>
                     </table>
-                </div>
 
-                <div class=""table-responsive"">
-                    <h2 class=""text-muted"">Hub Summary</h2>
-                    <table class=""table table-striped table-sm"">
-                        <thead>
-                            <th scope=""col"">Requests</th>
-                        ");
- foreach(var item in hubRequestResult.SummaryItems) { 
-            this.Write("                            <th scope=\"col\">");
-            this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
-            this.Write(" req</th>\r\n                        ");
- } 
-            this.Write("                            <th scope=\"col\">Errors</th>\r\n                        " +
-                    "</thead>\r\n                        <tr>\r\n                            <td>Duration" +
-                    "</td>\r\n                        ");
- foreach(var item in hubRequestResult.SummaryItems) { 
-            this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", item.Duration.TotalSeconds)));
-            this.Write(" sec</td>\r\n                        ");
- } 
-            this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(hubRequestResult.Errors));
-            this.Write("</td>\r\n                        </tr>\r\n                        <tr>\r\n             " +
-                    "               <td>Rps</td>\r\n                        ");
- foreach(var item in hubRequestResult.SummaryItems) { 
-            this.Write("                            <td>");
-            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Rps)));
-            this.Write(" rps</td>\r\n                        ");
- } 
-            this.Write(@"                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div>
-                    <h2>Unary Connection Bench</h2>
                     <canvas id=""unaryClientAvg""></canvas>
                     <canvas id=""unaryRequestAvg""></canvas>
                     <canvas id=""unaryRequestStackBar""></canvas>
@@ -422,13 +386,46 @@ namespace Benchmark.ClientLib
                     "l\' // data colum for tooltip\r\n                                },\r\n              " +
                     "                  responsive: true\r\n                            }\r\n             " +
                     "           });\r\n                    </script>\r\n                </div>\r\n\r\n       " +
-                    "         <div>\r\n                    <h2>Hub Connection Bench</h2>\r\n             " +
-                    "       <canvas id=\"hubRequestAvg\"></canvas>\r\n                    <canvas id=\"hub" +
-                    "RequestStackBar\"></canvas>\r\n\r\n                    <script>\r\n                    " +
-                    "    var ctx = document.getElementById(\"hubRequestAvg\");\r\n                       " +
-                    " var myChart = new Chart(ctx, {\r\n                            type: \'bar\',\r\n     " +
-                    "                       data: {\r\n                                labels: [\r\n     " +
-                    "                           ");
+                    "         <div class=\"table-responsive\">\r\n                    <h2 class=\"text-mut" +
+                    "ed\">Hub Summary</h2>\r\n                    <table class=\"table table-striped tabl" +
+                    "e-sm\">\r\n                        <thead>\r\n                            <th scope=\"" +
+                    "col\">Requests</th>\r\n                        ");
+ foreach(var item in hubRequestResult.SummaryItems) { 
+            this.Write("                            <th scope=\"col\">");
+            this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
+            this.Write(" req</th>\r\n                        ");
+ } 
+            this.Write("                            <th scope=\"col\">Errors</th>\r\n                        " +
+                    "</thead>\r\n                        <tr>\r\n                            <td>Duration" +
+                    "</td>\r\n                        ");
+ foreach(var item in hubRequestResult.SummaryItems) { 
+            this.Write("                            <td>");
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Duration.TotalSeconds)));
+            this.Write(" sec</td>\r\n                        ");
+ } 
+            this.Write("                            <td>");
+            this.Write(this.ToStringHelper.ToStringWithCulture(hubRequestResult.Errors));
+            this.Write("</td>\r\n                        </tr>\r\n                        <tr>\r\n             " +
+                    "               <td>Rps</td>\r\n                        ");
+ foreach(var item in hubRequestResult.SummaryItems) { 
+            this.Write("                            <td>");
+            this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f2}", item.Rps)));
+            this.Write(" rps</td>\r\n                        ");
+ } 
+            this.Write(@"                        </tr>
+                        </tbody>
+                    </table>
+
+                    <canvas id=""hubRequestAvg""></canvas>
+                    <canvas id=""hubRequestStackBar""></canvas>
+
+                    <script>
+                        var ctx = document.getElementById(""hubRequestAvg"");
+                        var myChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: [
+                                ");
  foreach(var item in hubRequestResult.SummaryItems) { 
             this.Write("                                    \"");
             this.Write(this.ToStringHelper.ToStringWithCulture(item.RequestCount));
