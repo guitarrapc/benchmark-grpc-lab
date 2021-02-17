@@ -68,6 +68,18 @@ public class BenchmarkRunner : ConsoleAppBase
     }
 
     /// <summary>
+    /// Run Grpc Benchmark
+    /// </summary>
+    /// <param name="hostAddress"></param>
+    /// <param name="reportId"></param>
+    /// <returns></returns>
+    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    {
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken);
+        await benchmarker.BenchGrpc(hostAddress, iterations, reportId);
+    }
+
+    /// <summary>
     /// List Reports
     /// </summary>
     /// <param name="reportId"></param>
