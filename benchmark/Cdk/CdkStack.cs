@@ -150,7 +150,7 @@ namespace Cdk
                     Timeout = Duration.Minutes(10),
                 }),
             });
-            asg.AddSecretsReadGrant(ddToken, stackProps.UseEc2DatadogAgentProfiler);
+            asg.AddSecretsReadGrant(ddToken, () => stackProps.UseEc2DatadogAgentProfiler);
             var userdata = GetUserData(recreateMagicOnionTrigger, s3.BucketName, serviceDiscoveryServer.ServiceId, stackProps.UseEc2CloudWatchAgentProfiler, stackProps.UseEc2DatadogAgentProfiler);
             asg.AddUserData(userdata);
             asg.UserData.AddSignalOnExitCommand(asg);
@@ -190,7 +190,7 @@ namespace Cdk
                 Cpu = stackProps.WorkerFargateSpec.CpuSize,
                 MemoryLimitMiB = stackProps.WorkerFargateSpec.MemorySize,
             });
-            dframeWorkerTaskDef.AddContainer("worker", new ContainerDefinitionOptions
+            dframeWorkerTaskDef.AddContainer(dframeWorkerContainerName, new ContainerDefinitionOptions
             {
                 Image = dframeImage,
                 Command = new[] { "--worker-flag" },
@@ -213,21 +213,7 @@ namespace Cdk
                     StreamPrefix = dframeWorkerLogGroup,
                 }),
             });
-            if (stackProps.UseFargateDatadogAgentProfiler)
-            {
-                dframeWorkerTaskDef.AddContainer("worker-datadog", new ContainerDefinitionOptions
-                {
-                    Image = ContainerImage.FromRegistry("datadog/agent:latest"),
-                    Environment = new Dictionary<string, string>
-                    {
-                        { "DD_API_KEY", ddToken.SecretValue.ToString() },
-                        { "ECS_FARGATE","true"},
-                    },
-                    Cpu = 10,
-                    MemoryReservationMiB = 256,
-                    Essential = false,
-                });
-            }
+            dframeWorkerTaskDef.AddDatadogContainer($"{dframeWorkerContainerName}-datadog", ddToken, () => stackProps.UseFargateDatadogAgentProfiler);
             var dframeWorkerService = new FargateService(this, "DFrameWorkerService", new FargateServiceProps
             {
                 ServiceName = "DFrameWorkerService",
@@ -274,21 +260,7 @@ namespace Cdk
                     StreamPrefix = dframeMasterLogGroup,
                 }),
             });
-            if (stackProps.UseFargateDatadogAgentProfiler)
-            {
-                dframeMasterTaskDef.AddContainer("dframe-datadog", new ContainerDefinitionOptions
-                {
-                    Image = ContainerImage.FromRegistry("datadog/agent:latest"),
-                    Environment = new Dictionary<string, string>
-                    {
-                        { "DD_API_KEY", ddToken.SecretValue.ToString() },
-                        { "ECS_FARGATE","true"},
-                    },
-                    Cpu = 10,
-                    MemoryReservationMiB = 256,
-                    Essential = false,
-                });
-            }
+            dframeWorkerTaskDef.AddDatadogContainer($"dframe-datadog", ddToken, () => stackProps.UseFargateDatadogAgentProfiler);
             var dframeMasterService = new FargateService(this, "DFrameMasterService", new FargateServiceProps
             {
                 ServiceName = "DFrameMasterService",
@@ -592,11 +564,33 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
 
     public static class AutoscalingGroupExtensions
     {
-        public static void AddSecretsReadGrant(this AutoScalingGroup asg, ISecret secret, bool enable)
+        public static void AddSecretsReadGrant(this AutoScalingGroup asg, ISecret secret, Func<bool> enable)
         {
-            if (enable)
+            if (enable != null && enable.Invoke())
             {
                 secret.GrantRead(asg);
+            }
+        }
+    }
+
+    public static class TaskDefinitionExtensions
+    {
+        public static void AddDatadogContainer(this TaskDefinition taskdef, string containerName,ISecret ddToken, Func<bool> enable)
+        {
+            if (enable != null && enable.Invoke())
+            {
+                taskdef.AddContainer(containerName, new ContainerDefinitionOptions
+                {
+                    Image = ContainerImage.FromRegistry("datadog/agent:latest"),
+                    Environment = new Dictionary<string, string>
+                    {
+                        { "DD_API_KEY", ddToken.SecretValue.ToString() },
+                        { "ECS_FARGATE","true"},
+                    },
+                    Cpu = 10,
+                    MemoryReservationMiB = 256,
+                    Essential = false,
+                });
             }
         }
     }
