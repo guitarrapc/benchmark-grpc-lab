@@ -157,21 +157,24 @@ namespace Cdk
             asg.Node.AddDependency(masterDllDeployment);
             asg.Node.AddDependency(userdataDeployment);
 
-            // could not roll back to desired count = 1
-            new CfnScheduledAction(this, "ScheduleOut", new CfnScheduledActionProps
+            if (stackProps.EnableCronScaleInEc2)
             {
-                AutoScalingGroupName = asg.AutoScalingGroupName,
-                DesiredCapacity = 1,
-                MaxSize = 1,
-                Recurrence = "0 0 * 1-5 *", // AM9:00 (JST+9)
-            });
-            new CfnScheduledAction(this, "ScheduleIn", new CfnScheduledActionProps
-            {
-                AutoScalingGroupName = asg.AutoScalingGroupName,
-                DesiredCapacity = 0,
-                MaxSize = 0,
-                Recurrence = "0 12 * 1-5 *", // PM21:00 (JST+9)
-            });
+                // could not roll back to desired count = 1
+                new CfnScheduledAction(this, "ScheduleOut", new CfnScheduledActionProps
+                {
+                    AutoScalingGroupName = asg.AutoScalingGroupName,
+                    DesiredCapacity = 1,
+                    MaxSize = 1,
+                    Recurrence = "0 0 * 1-5 *", // AM9:00 (JST+9)
+                });
+                new CfnScheduledAction(this, "ScheduleIn", new CfnScheduledActionProps
+                {
+                    AutoScalingGroupName = asg.AutoScalingGroupName,
+                    DesiredCapacity = 0,
+                    MaxSize = 0,
+                    Recurrence = "0 12 * 1-5 *", // PM21:00 (JST+9)
+                });
+            }
 
             // ECS
             var cluster = new Cluster(this, "WorkerCluster", new ClusterProps

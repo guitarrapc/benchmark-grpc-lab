@@ -12,6 +12,7 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
+                EnableCronScaleInEc2 = true,
                 ForceRecreateMagicOnion = false,
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
@@ -30,6 +31,10 @@ namespace Cdk
 
     public class ReportStackProps : StackProps
     {
+        /// <summary>
+        /// Enable ScaleIn on 0:00:00 (UTC)
+        /// </summary>
+        public bool EnableCronScaleInEc2 { get; set; }
         /// <summary>
         /// Flag to force recreate MagicOnion Ec2 Server
         /// </summary>
