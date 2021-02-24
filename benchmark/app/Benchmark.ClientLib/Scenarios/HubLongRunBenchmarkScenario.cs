@@ -8,21 +8,21 @@ using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Scenarios
 {
-    public class HubBenchmarkScenario : IBenchmarkHubReciever, IAsyncDisposable
+    public class HubLongRunBenchmarkScenario : ILongRunBenchmarkHubReciever, IAsyncDisposable
     {
         private readonly GrpcChannel _channel;
         private readonly BenchReporter _reporter;
-        private IBenchmarkHub _client;
+        private ILongRunBenchmarkHub _client;
         private int _errors = 0;
 
-        public HubBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
+        public HubLongRunBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
         {
             _channel = channel;
             _reporter = reporter;
             _errors = 0;
         }
 
-        public async Task Run(int requestCount)
+        public async Task Run(int requestCount, int waitMilliseonds, bool parallel)
         {
             using (var statistics = new Statistics(nameof(ConnectAsync)))
             {
@@ -42,15 +42,15 @@ namespace Benchmark.ClientLib.Scenarios
                 });
             }
 
-            using (var statistics = new Statistics(nameof(PlainTextAsync)))
+            using (var statistics = new Statistics(nameof(ProcessAsync)))
             {
-                await PlainTextAsync(requestCount);
+                await ProcessAsync(requestCount, waitMilliseonds, parallel);
 
                 _reporter.AddBenchDetail(new BenchReportItem
                 {
                     ExecuteId = _reporter.ExecuteId,
                     ClientId = _reporter.ClientId,
-                    TestName = nameof(PlainTextAsync),
+                    TestName = nameof(ProcessAsync),
                     Begin = statistics.Begin,
                     End = DateTime.UtcNow,
                     Duration = statistics.Elapsed,
@@ -83,9 +83,9 @@ namespace Benchmark.ClientLib.Scenarios
             _errors = 0;
             try
             {
-                _client = StreamingHubClient.Connect<IBenchmarkHub, IBenchmarkHubReciever>(_channel, this);
+                _client = StreamingHubClient.Connect<ILongRunBenchmarkHub, ILongRunBenchmarkHubReciever>(_channel, this);
                 var name = Guid.NewGuid().ToString();
-                await _client.Ready(roomName, name, "plaintext");
+                await _client.Ready(roomName, name);
             }
             catch (Exception)
             {
@@ -93,15 +93,27 @@ namespace Benchmark.ClientLib.Scenarios
             }
         }
 
-        private async Task PlainTextAsync(int requestCount)
+        private async Task ProcessAsync(int requestCount, int waitMilliseonds, bool parallel)
+        {
+            if (parallel)
+            {
+                await ProcessParallelAsync(requestCount, waitMilliseonds);
+            }
+            else
+            {
+                await ProcessSequentialAsync(requestCount, waitMilliseonds);
+            }
+        }
+
+        private async Task ProcessSequentialAsync(int requestCount, int waitMilliseonds)
         {
             _errors = 0;
+            var data = new LongRunBenchmarkData
+            {
+                WaitMilliseconds = waitMilliseonds,
+            };
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 try
                 {
                     await _client.Process(data);
@@ -113,18 +125,20 @@ namespace Benchmark.ClientLib.Scenarios
             }
         }
 
-        private async Task PlainTextParallelAsync(int requestCount)
+        private async Task ProcessParallelAsync(int requestCount, int waitMilliseonds)
         {
-            var tasks = new List<Task>();
             _errors = 0;
+            var tasks = new List<Task>();
+            var data = new LongRunBenchmarkData
+            {
+                WaitMilliseconds = waitMilliseonds,
+            };
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 try
                 {
+                    // no meaing.
+                    // same streaming client will wait sequentially at server, you should not use itelation but must separate client.
                     var task = _client.Process(data);
                     tasks.Add(task);
                 }
@@ -133,6 +147,7 @@ namespace Benchmark.ClientLib.Scenarios
                     _errors++;
                 }
             }
+
             await Task.WhenAll(tasks);
         }
 
@@ -154,15 +169,15 @@ namespace Benchmark.ClientLib.Scenarios
             await _client.DisposeAsync();
         }
 
-        void IBenchmarkHubReciever.OnStart(string requestType)
+        void ILongRunBenchmarkHubReciever.OnStart(string requestType)
         {
             throw new NotImplementedException();
         }
-        void IBenchmarkHubReciever.OnProcess()
+        void ILongRunBenchmarkHubReciever.OnProcess()
         {
             throw new NotImplementedException();
         }
-        void IBenchmarkHubReciever.OnEnd()
+        void ILongRunBenchmarkHubReciever.OnEnd()
         {
             throw new NotImplementedException();
         }

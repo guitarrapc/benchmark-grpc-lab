@@ -72,6 +72,19 @@ public class BenchmarkRunner : ConsoleAppBase
     }
 
     /// <summary>
+    /// Run Hub Benchmark
+    /// </summary>
+    /// <param name="hostAddress"></param>
+    /// <param name="reportId"></param>
+    /// <returns></returns>
+    public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    {
+        var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
+        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken);
+        await benchmarker.BenchLongRunHub(waitMilliseconds, true, hostAddress, reportId);
+    }
+
+    /// <summary>
     /// Run Grpc Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>

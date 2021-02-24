@@ -47,7 +47,7 @@ namespace Benchmark.ClientLib.Scenarios
         private async Task SumAsync(int requestCount)
         {
             var tasks = new List<UnaryResult<int>>();
-            for (var i = 0; i <= requestCount; i++)
+            for (var i = 0; i < requestCount; i++)
             {
                 try
                 {
@@ -65,7 +65,7 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task PlainTextAsync(int requestCount)
         {
-            for (var i = 0; i <= requestCount; i++)
+            for (var i = 0; i < requestCount; i++)
             {
                 var data = new BenchmarkData
                 {
@@ -85,7 +85,7 @@ namespace Benchmark.ClientLib.Scenarios
         private async Task PlainTextAsyncParallel(int requestCount)
         {
             var tasks = new List<UnaryResult<Nil>>();
-            for (var i = 0; i <= requestCount; i++)
+            for (var i = 0; i < requestCount; i++)
             {
                 var data = new BenchmarkData
                 {
