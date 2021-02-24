@@ -143,7 +143,7 @@ namespace Benchmark.ClientLib
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", summary.DurationMax.TotalMilliseconds)));
             this.Write(" ms</td>\r\n                        </tr>\r\n                        </tbody>\r\n      " +
                     "              </table>\r\n                </div>\r\n\r\n                ");
- if (unaryRequestResult.Any()) {
+ if (unaryRequestResult.SummaryItems.Any()) {
             this.Write(@"                <div class=""table-responsive"">
                     <h2 class=""text-muted"">Unary Summary</h2>
                     <table class=""table table-striped table-sm"">
@@ -386,7 +386,7 @@ namespace Benchmark.ClientLib
                     "       ");
 }
             this.Write("\r\n                ");
- if (hubRequestResult.Any()) {
+ if (hubRequestResult.SummaryItems.Any()) {
             this.Write(@"                <div class=""table-responsive"">
                     <h2 class=""text-muted"">Hub Summary</h2>
                     <table class=""table table-striped table-sm"">

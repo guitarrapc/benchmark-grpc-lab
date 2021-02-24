@@ -38,7 +38,7 @@ namespace ConsoleAppEcs
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName GrpcWorker".Split(' ');
                 //args = "request -processCount 40 -workerPerProcess 100 -executePerWorker 1 -workerName LongRunHubWorker".Split(' ');
-                args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 1 -workerName CCoreLongRunHubWorker".Split(' ');
+                args = "request -processCount 100 -workerPerProcess 100 -executePerWorker 1 -workerName CCoreLongRunHubWorker".Split(' ');
 
                 // expand thread pool
                 //ModifyThreadPool(Environment.ProcessorCount * 5, Environment.ProcessorCount * 5);
@@ -257,7 +257,7 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
             var iterations = new[] { 1 };
-            _waitMilliseconds = 60_000; // 1000 = 1sec
+            _waitMilliseconds = 240_000; // 1000 = 1sec
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
