@@ -35,8 +35,9 @@ namespace ConsoleAppEcs
                 //args = "request -processCount 5 -workerPerProcess 50 -executePerWorker 100 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 150 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 20 -workerPerProcess 10 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
-                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName GrpcWorker".Split(' ');
+                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName LongRunHubWorker".Split(' ');
             }
             else if (args.Contains("--worker-flag"))
             {
@@ -56,30 +57,31 @@ namespace ConsoleAppEcs
                         options.EnableStructuredLogging = false;
                     });
                 })
-                .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
-                {
-                    Timeout = TimeSpan.FromMinutes(120),
-                    OnExecuteResult = (results, option, scenario) =>
-                    {
-                        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-                        Console.WriteLine("Generating html.");
-                        var benchmarker = new Benchmarker(path, null, null, cts.Token);
-                        benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
-                    },
-                });
-                //.RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())
+                //.RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
                 //{
-                //    OnExecuteResult = async (results, option, scenario) => 
+                //    Timeout = TimeSpan.FromMinutes(120),
+                //    OnExecuteResult = (results, option, scenario) =>
                 //    {
-                //        var benchmarker = new Benchmarker(path, null, default);
-                //        var reports = await benchmarker.GetReports(reportId);
-                //        if (reports.Any())
-                //        {
-                //            Console.WriteLine("Generating html.");
-                //            await benchmarker.GenerateHtml(reportId, generateDetail: false);
-                //        }
+                //        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+                //        Console.WriteLine("Generating html.");
+                //        var benchmarker = new Benchmarker(path, null, null, cts.Token);
+                //        benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
                 //    },
                 //});
+                .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())
+                {
+                    OnExecuteResult = async (results, option, scenario) =>
+                    {
+                        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+                        var benchmarker = new Benchmarker(path, null, null, cts.Token);
+                        var reports = await benchmarker.GetReports(reportId);
+                        if (reports.Any())
+                        {
+                            Console.WriteLine("Generating html.");
+                            await benchmarker.GenerateHtml(reportId, generateDetail: false);
+                        }
+                    },
+                });
         }
     }
 
@@ -99,8 +101,8 @@ namespace ConsoleAppEcs
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             //_hostAddress = "http://localhost:5000";
-            //_reportId = "abc-123";
-            //path = "sample-bucket";
+            //_reportId = Guid.NewGuid().ToString();
+            //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
             var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
@@ -175,20 +177,19 @@ namespace ConsoleAppEcs
         private string _reportId;
         private Benchmarker _benchmarker;
         private int _waitMilliseconds;
-        private bool _isParallel = false;
 
         public override async Task SetupAsync(WorkerContext context)
         {
             Console.WriteLine("Setup");
             _cts = new CancellationTokenSource();
-            _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
-            _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
-            var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
-            //_hostAddress = "http://localhost:5000";
-            //_reportId = "abc-123";
-            //path = "sample-bucket";
+            //_hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
+            //_reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
+            //var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            _hostAddress = "http://localhost:5000";
+            _reportId = Guid.NewGuid().ToString();
+            var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
             var iterations = new[] { 1 };
-            _waitMilliseconds = 300_000; // 300sec
+            _waitMilliseconds = 1_000; // 1000 = 1sec
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
@@ -197,7 +198,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchLongRunHub(_waitMilliseconds, _isParallel, _hostAddress, _reportId);
+                await _benchmarker.BenchLongRunHub(_waitMilliseconds, false, _hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -228,8 +229,8 @@ namespace ConsoleAppEcs
             _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             //_hostAddress = "http://localhost:5000";
-            //_reportId = "abc-123";
-            //path = "sample-bucket";
+            //_reportId = Guid.NewGuid().ToString();
+            //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
             var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");

@@ -179,7 +179,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchLongRunHub(int waitMilliseconds, bool parallel, string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task BenchLongRunHub(int waitMilliseconds, bool parallel = false, string hostAddress = "http://localhost:5000", string reportId = "")
         {
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
