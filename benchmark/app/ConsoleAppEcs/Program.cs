@@ -68,7 +68,7 @@ namespace ConsoleAppEcs
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
                         Console.WriteLine("Generating html.");
-                        var benchmarker = new Benchmarker(path, null, null, cts.Token);
+                        var benchmarker = new Benchmarker(path, null, cts.Token);
                         benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
                     },
                 });
@@ -79,7 +79,7 @@ namespace ConsoleAppEcs
                 //     {
                 //         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
                 //         Console.WriteLine("Generating html.");
-                //         var benchmarker = new Benchmarker(path, null, null, cts.Token);
+                //         var benchmarker = new Benchmarker(path, null, cts.Token);
                 //         await benchmarker.GenerateHtml(reportId, generateDetail: false);
                 //     },
                 // });
@@ -129,7 +129,7 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, null, _cts.Token);
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
@@ -171,7 +171,7 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"));
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
@@ -215,7 +215,7 @@ namespace ConsoleAppEcs
             _waitMilliseconds = 240_000; // 1000 = 1sec
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"));
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
@@ -260,7 +260,7 @@ namespace ConsoleAppEcs
             _waitMilliseconds = 240_000; // 1000 = 1sec
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"));
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
@@ -302,7 +302,7 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token);
+            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"));
         }
         public override async Task ExecuteAsync(WorkerContext context)
         {
