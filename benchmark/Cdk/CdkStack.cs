@@ -31,9 +31,7 @@ namespace Cdk
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
             var benchCommunicationStyle = stackProps.GetBenchCommunicationStyle();
-            var benchTargetScheme = benchCommunicationStyle.UseHttpsEndpoint ? "https" : "http";
             var magicOnionBinaryName = benchCommunicationStyle.ListenMagicOnionTls ? "Benchmark.Server.Https" : "Benchmark.Server";
-            var isAlbDiscovery = benchCommunicationStyle.CommunicationType == CommunicationType.Alb;
 
             // s3
             var s3 = new Bucket(this, "Bucket", new BucketProps
@@ -125,7 +123,7 @@ namespace Cdk
             // alb
             var albDnsName = "benchmark-alb";
             IApplicationTargetGroup targetGroup = null;
-            if (isAlbDiscovery)
+            if (benchCommunicationStyle.RequireAlb)
             {
                 // https://github.com/intercept6/example-aws-cdk-custom-resource
                 // CustomResource Lambda for TargetGroup support ProtocolVersion Grpc
@@ -192,7 +190,7 @@ namespace Cdk
                 // route53
                 var hostedZone = HostedZone.FromHostedZoneAttributes(this, "HostedZone", new HostedZoneAttributes
                 {
-                    HostedZoneId = stackProps.AlbDomain.parentZoneId,
+                    HostedZoneId = stackProps.AlbDomain.zoneId,
                     ZoneName = stackProps.AlbDomain.domain,
                 });
 
@@ -236,9 +234,9 @@ namespace Cdk
                     DomainName = lb.LoadBalancerDnsName,
                 });
             }
-            var benchToMagicOnionDnsName = isAlbDiscovery
-                ? $"{benchTargetScheme}://{albDnsName}.{stackProps.AlbDomain.domain}"
-                : $"{benchTargetScheme}://{serverMapName}.{serviceDiscoveryDomain}";
+            var benchToMagicOnionDnsName = benchCommunicationStyle.RequireAlb
+                ? $"{benchCommunicationStyle.EndpointSchema}://{albDnsName}.{stackProps.AlbDomain.domain}"
+                : $"{benchCommunicationStyle.EndpointSchema}://{serverMapName}.{serviceDiscoveryDomain}";
 
             // iam
             var iamEc2MagicOnionRole = GetIamEc2MagicOnionRole(s3, serviceDiscoveryServer);
@@ -303,7 +301,7 @@ namespace Cdk
                     Schedule = Schedule.Expression("0 12 * 1-7 *"),
                 });
             }
-            if (isAlbDiscovery)
+            if (benchCommunicationStyle.RequireAlb)
             {
                 asg.AttachToApplicationTargetGroup(targetGroup);
             }
@@ -321,8 +319,8 @@ namespace Cdk
             {
                 ExecutionRole = iamEcsTaskExecuteRole,
                 TaskRole = iamWorkerTaskDefRole,
-                Cpu = stackProps.WorkerFargateSpec.CpuSize,
-                MemoryLimitMiB = stackProps.WorkerFargateSpec.MemorySize,
+                Cpu = stackProps.WorkerFargate.CpuSize,
+                MemoryLimitMiB = stackProps.WorkerFargate.MemorySize,
             });
             dframeWorkerTaskDef.AddContainer(dframeWorkerContainerName, new ContainerDefinitionOptions
             {
@@ -366,8 +364,8 @@ namespace Cdk
             {
                 ExecutionRole = iamEcsTaskExecuteRole,
                 TaskRole = iamDFrameTaskDefRole,
-                Cpu = stackProps.MasterFargateSpec.CpuSize,
-                MemoryLimitMiB = stackProps.MasterFargateSpec.MemorySize,
+                Cpu = stackProps.MasterFargate.CpuSize,
+                MemoryLimitMiB = stackProps.MasterFargate.MemorySize,
             });
             dframeMasterTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
             {
@@ -417,7 +415,7 @@ namespace Cdk
 
             // output
             new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{stackProps.ReportId}/index.html" });
-            new CfnOutput(this, "EndPointStyle", new CfnOutputProps { Value = stackProps.EndpointStyle.ToString() });
+            new CfnOutput(this, "EndPointStyle", new CfnOutputProps { Value = stackProps.Endpoint.ToString() });
             new CfnOutput(this, "AsgName", new CfnOutputProps { Value = asg.AutoScalingGroupName });
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
             new CfnOutput(this, "DFrameWorkerEcsTaskdefImage", new CfnOutputProps { Value = dockerImage.ImageUri });
