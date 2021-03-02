@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <Compile Include="..\Benchmark.Server\*.cs" Link="%(FileName)%(Extension)" />
+    <Compile Include="..\Benchmark.Server\HealthCheck\*.cs" Link="HealthCheck\%(RecursiveDir)\%(FileName)%(Extension)" />
     <Compile Include="..\Benchmark.Server\Hubs\**\*.cs" Link="Hubs\%(RecursiveDir)\%(FileName)%(Extension)" />
     <Compile Include="..\Benchmark.Server\Services\**\*.cs" Link="Services\%(RecursiveDir)\%(FileName)%(Extension)" />
     <Compile Include="..\Benchmark.Server\Shared\**\*.cs" Link="Shared\%(RecursiveDir)\%(FileName)%(Extension)" />
@@ -43,6 +44,7 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.35.0" />
+    <PackageReference Include="Grpc.HealthCheck" Version="2.36.0" />
     <PackageReference Include="MagicOnion.Server" Version="4.1.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.9" />

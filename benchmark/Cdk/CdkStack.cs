@@ -1,14 +1,19 @@
 using Amazon.CDK;
 using Amazon.CDK.AWS.AutoScaling;
+using Amazon.CDK.AWS.CertificateManager;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.Ecr.Assets;
 using Amazon.CDK.AWS.ECS;
+using Amazon.CDK.AWS.ElasticLoadBalancingV2;
 using Amazon.CDK.AWS.IAM;
+using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.Logs;
+using Amazon.CDK.AWS.Route53;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Deployment;
 using Amazon.CDK.AWS.SecretsManager;
 using Amazon.CDK.AWS.ServiceDiscovery;
+using Amazon.CDK.CustomResources;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +30,10 @@ namespace Cdk
             var recreateMagicOnionTrigger = stackProps.ForceRecreateMagicOnion ? $"echo {stackProps.ExecuteTime}" : "";
             var dframeWorkerLogGroup = "MagicOnionBenchWorkerLogGroup";
             var dframeMasterLogGroup = "MagicOnionBenchMasterLogGroup";
+            var benchCommunicationStyle = stackProps.GetBenchCommunicationStyle();
+            var benchTargetScheme = benchCommunicationStyle.UseHttpsEndpoint ? "https" : "http";
+            var magicOnionBinaryName = benchCommunicationStyle.ListenMagicOnionTls ? "Benchmark.Server.Https" : "Benchmark.Server";
+            var isAlbDiscovery = benchCommunicationStyle.CommunicationType == CommunicationType.Alb;
 
             // s3
             var s3 = new Bucket(this, "Bucket", new BucketProps
@@ -32,7 +41,6 @@ namespace Cdk
                 AutoDeleteObjects = true,
                 RemovalPolicy = RemovalPolicy.DESTROY,
                 AccessControl = BucketAccessControl.PRIVATE,
-                Versioned = stackProps.UseVersionedS3,
             });
             var lifecycleRule = new LifecycleRule
             {
@@ -41,8 +49,6 @@ namespace Cdk
                 Expiration = Duration.Days(stackProps.DaysKeepReports),
                 AbortIncompleteMultipartUploadAfter = Duration.Days(1),
             };
-            if (stackProps.UseVersionedS3)
-                lifecycleRule.NoncurrentVersionExpiration = Duration.Days(stackProps.DaysKeepReports);
             s3.AddLifecycleRule(lifecycleRule);
             s3.AddToResourcePolicy(new PolicyStatement(new PolicyStatementProps
             {
@@ -84,8 +90,14 @@ namespace Cdk
             var dframeImage = ContainerImage.FromDockerImageAsset(dockerImage);
 
             // network
-            var vpc = new Vpc(this, "Vpc", new VpcProps { MaxAzs = 1, NatGateways = 0, });
-            var subnets = new SubnetSelection { Subnets = vpc.PublicSubnets };
+            var vpc = new Vpc(this, "Vpc", new VpcProps
+            {
+                MaxAzs = 2,
+                NatGateways = 0,
+                SubnetConfiguration = new[] { new SubnetConfiguration { Name = "public", SubnetType = SubnetType.PUBLIC } },
+            });
+            var allsubnets = new SubnetSelection { Subnets = vpc.PublicSubnets };
+            var singleSubnets = new SubnetSelection { Subnets = new[] { vpc.PublicSubnets.First() } };
             var sg = new SecurityGroup(this, "MasterSg", new SecurityGroupProps
             {
                 AllowAllOutbound = true,
@@ -110,6 +122,124 @@ namespace Cdk
                 RoutingPolicy = RoutingPolicy.MULTIVALUE,
             });
 
+            // alb
+            var albDnsName = "benchmark-alb";
+            IApplicationTargetGroup targetGroup = null;
+            if (isAlbDiscovery)
+            {
+                // https://github.com/intercept6/example-aws-cdk-custom-resource
+                // CustomResource Lambda for TargetGroup support ProtocolVersion Grpc
+                var targetGroupEventHandler = new SingletonFunction(this, "grpc-targetgroup", new SingletonFunctionProps
+                {
+                    Uuid = "4ddd3cf8-0a1b-43ee-994e-c15a2ffe1bd2",
+                    Code = Code.FromAsset(Path.Combine(Directory.GetCurrentDirectory(), "lambda"), new Amazon.CDK.AWS.S3.Assets.AssetOptions
+                    {
+                        AssetHashType = AssetHashType.OUTPUT,
+                        Bundling = new BundlingOptions
+                        {
+                            Image = Runtime.NODEJS_12_X.BundlingDockerImage,
+                            User = "root",
+                            Command = new []
+                            {
+                                "bash",
+                                "-c",
+                                string.Join(" && ", new []
+                                {
+                                    "cp -au src package.json yarn.lock /tmp",
+                                    "cd /tmp",
+                                    "npm install --global yarn",
+                                    "yarn install",
+                                    "yarn -s esbuild src/lambda/target-group.ts --bundle --platform=node --target=node12 --outfile=/asset-output/index.js",
+                                }),
+                            },
+                        },
+                    }),
+                    Runtime = Runtime.NODEJS_12_X,
+                    Handler = "index.handler",
+                    MemorySize = 512,
+                    Timeout = Duration.Minutes(10),
+                    InitialPolicy = new[] { new PolicyStatement(new PolicyStatementProps
+                    {
+                        Actions = new [] { "elasticloadbalancing:*" },
+                        Resources = new [] { "*" },
+                    })},
+                });
+                var provider = new Provider(this, "customProvider", new ProviderProps
+                {
+                    OnEventHandler = targetGroupEventHandler,
+                });
+                var grpcTargetGroupResource = new CustomResource(this, "grpc-target-group-lambda", new CustomResourceProps
+                {
+                    ServiceToken = provider.ServiceToken,
+                    Properties = new Dictionary<string, object?>()
+                    {
+                        { "Name", "grpc-target-group" },
+                        { "Port", 80 },
+                        { "Protocol", "HTTP" },
+                        { "ProtocolVersion", "GRPC" },
+                        { "VpcId", vpc.VpcId },
+                        { "TargetType", "instance"},
+                        { "HealthCheckEnabled", true },
+                        { "HealthCheckProtocol", "HTTP" },
+                        { "HealthyThresholdCount", 2 },
+                        { "HealthCheckIntervalSeconds", 15 },
+                        { "HealthCheckTimeoutSeconds", 10 },
+                        { "HealthCheckPath", "/grpc.health.v1.Health/Check" },
+                        { "Matcher", new Dictionary<string, string> { {"GrpcCode", "0-99"} } },
+                    },
+                });
+
+                // route53
+                var hostedZone = HostedZone.FromHostedZoneAttributes(this, "HostedZone", new HostedZoneAttributes
+                {
+                    HostedZoneId = stackProps.AlbDomain.parentZoneId,
+                    ZoneName = stackProps.AlbDomain.domain,
+                });
+
+                // acm
+                var certificate = new DnsValidatedCertificate(this, "certificate", new DnsValidatedCertificateProps
+                {
+                    DomainName = $"{albDnsName}.{hostedZone.ZoneName}",
+                    HostedZone = hostedZone,
+                });
+                // alb
+                var lb = new ApplicationLoadBalancer(this, "LB", new ApplicationLoadBalancerProps
+                {
+                    Vpc = vpc,
+                    VpcSubnets = allsubnets,
+                    SecurityGroup = new SecurityGroup(this, "AlbSg", new SecurityGroupProps
+                    {
+                        AllowAllOutbound = true,
+                        Vpc = vpc,
+                    }),
+                    InternetFacing = false,
+                    Http2Enabled = true,
+                });
+                targetGroup = ApplicationTargetGroup.FromTargetGroupAttributes(this, "grpc-target-group", new TargetGroupAttributes
+                {
+                    TargetGroupArn = grpcTargetGroupResource.Ref,
+                });
+                var listener = lb.AddListener("HttpsListener", new BaseApplicationListenerProps
+                {
+                    Port = 443,
+                    Certificates = new[] { new ListenerCertificate(certificate.CertificateArn) },
+                });
+                listener.AddTargetGroups("TargetGroupAttachment", new AddApplicationTargetGroupsProps
+                {
+                    TargetGroups = new[] { targetGroup },
+                });
+                _ = new CnameRecord(this, "alb-alias-record", new CnameRecordProps
+                {
+                    RecordName = $"{albDnsName}.{stackProps.AlbDomain.domain}",
+                    Ttl = Duration.Seconds(60),
+                    Zone = hostedZone,
+                    DomainName = lb.LoadBalancerDnsName,
+                });
+            }
+            var benchToMagicOnionDnsName = isAlbDiscovery
+                ? $"{benchTargetScheme}://{albDnsName}.{stackProps.AlbDomain.domain}"
+                : $"{benchTargetScheme}://{serverMapName}.{serviceDiscoveryDomain}";
+
             // iam
             var iamEc2MagicOnionRole = GetIamEc2MagicOnionRole(s3, serviceDiscoveryServer);
             var iamEcsTaskExecuteRole = GetIamEcsTaskExecuteRole(new[] { dframeWorkerLogGroup, dframeMasterLogGroup });
@@ -128,7 +258,7 @@ namespace Cdk
                 SpotPrice = "1.0", // 0.0096 for spot price average for m3.medium
                 Vpc = vpc,
                 SecurityGroup = sg,
-                VpcSubnets = subnets,
+                VpcSubnets = singleSubnets,
                 InstanceType = stackProps.MagicOnionInstanceType,
                 DesiredCapacity = 1,
                 MaxCapacity = 1,
@@ -162,16 +292,20 @@ namespace Cdk
                 {
                     DesiredCapacity = 1,
                     MaxCapacity = 1,
-                    // AM9:00 (JST+9)
+                    // AM9:00 (JST+9) on Monday to Wednesday
                     Schedule = Schedule.Expression("0 0 * 1-3 *"),
                 });
                 asg.ScaleOnSchedule("ScheduleIn", new BasicScheduledActionProps
                 {
                     DesiredCapacity = 0,
                     MaxCapacity = 0,
-                    // AM9:00 (JST+9)
+                    // PM9:00 (JST+9) on Everyday
                     Schedule = Schedule.Expression("0 12 * 1-7 *"),
                 });
+            }
+            if (isAlbDiscovery)
+            {
+                asg.AttachToApplicationTargetGroup(targetGroup);
             }
 
             // ECS
@@ -198,7 +332,7 @@ namespace Cdk
                 {
                     { "DFRAME_MASTER_CONNECT_TO_HOST", $"{dframeMapName}.{serviceDiscoveryDomain}"},
                     { "DFRAME_MASTER_CONNECT_TO_PORT", "12345"},
-                    { "BENCH_SERVER_HOST", $"{benchTargetScheme}://{serverMapName}.{serviceDiscoveryDomain}" },
+                    { "BENCH_SERVER_HOST", benchToMagicOnionDnsName },
                     { "BENCH_REPORTID", stackProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
@@ -220,7 +354,7 @@ namespace Cdk
                 DesiredCount = 0,
                 Cluster = cluster,
                 TaskDefinition = dframeWorkerTaskDef,
-                VpcSubnets = subnets,
+                VpcSubnets = singleSubnets,
                 SecurityGroups = new[] { sg },
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
                 MinHealthyPercent = 0,
@@ -267,7 +401,7 @@ namespace Cdk
                 DesiredCount = 1,
                 Cluster = cluster,
                 TaskDefinition = dframeMasterTaskDef,
-                VpcSubnets = subnets,
+                VpcSubnets = singleSubnets,
                 SecurityGroups = new[] { sg },
                 PlatformVersion = FargatePlatformVersion.VERSION1_4,
                 MinHealthyPercent = 0,
@@ -282,16 +416,10 @@ namespace Cdk
             });
 
             // output
-            var masterTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeMasterService.TaskDefinition.TaskDefinitionArn));
-            var workerTaskFamilyRevision = Fn.Select(1, Fn.Split("/", dframeWorkerService.TaskDefinition.TaskDefinitionArn));
             new CfnOutput(this, "ReportUrl", new CfnOutputProps { Value = $"https://{s3.BucketRegionalDomainName}/html/{stackProps.ReportId}/index.html" });
+            new CfnOutput(this, "EndPointStyle", new CfnOutputProps { Value = stackProps.EndpointStyle.ToString() });
+            new CfnOutput(this, "AsgName", new CfnOutputProps { Value = asg.AutoScalingGroupName });
             new CfnOutput(this, "EcsClusterName", new CfnOutputProps { Value = cluster.ClusterName });
-            new CfnOutput(this, "DFrameMasterEcsServiceName", new CfnOutputProps { Value = dframeMasterService.ServiceName });
-            new CfnOutput(this, "DFrameMasterEcsTaskdefArn", new CfnOutputProps { Value = dframeMasterService.TaskDefinition.TaskDefinitionArn });
-            new CfnOutput(this, "DFrameMasterEcsTaskdefName", new CfnOutputProps { Value = Fn.Select(0, Fn.Split(":", masterTaskFamilyRevision)) });
-            new CfnOutput(this, "DFrameWorkerEcsServiceName", new CfnOutputProps { Value = dframeWorkerService.ServiceName });
-            new CfnOutput(this, "DFrameWorkerEcsTaskdefArn", new CfnOutputProps { Value = dframeWorkerService.TaskDefinition.TaskDefinitionArn });
-            new CfnOutput(this, "DFrameWorkerEcsTaskdefName", new CfnOutputProps { Value = Fn.Select(0, Fn.Split(":", workerTaskFamilyRevision)) });
             new CfnOutput(this, "DFrameWorkerEcsTaskdefImage", new CfnOutputProps { Value = dockerImage.ImageUri });
         }
 

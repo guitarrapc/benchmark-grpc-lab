@@ -12,15 +12,16 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
-                EnableHttps = true,
+                EndpointStyle = EndpointStyle.Alb,
+                AlbDomain = ("dev.cysharp.io", "Z075519318R3LY1VXMWII"),
                 ForceRecreateMagicOnion = false,
                 EnableCronScaleInEc2 = true,
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
                 UseFargateDatadogAgentProfiler = true,
                 MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE),
-                MasterFargateSpec = new FargateSpec(CpuSpec.Half, MemorySpec.Low),
-                WorkerFargateSpec = new FargateSpec(CpuSpec.Quater, MemorySpec.Low),
+                MasterFargateSpec = new FargateSpec(FargateCpu.Half, FargateMemory.Low),
+                WorkerFargateSpec = new FargateSpec(FargateCpu.Double, FargateMemory.Low),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
@@ -34,9 +35,14 @@ namespace Cdk
     public class ReportStackProps : StackProps
     {
         /// <summary>
-        /// Enable https
+        /// EndpointStyle to select BenchCommnicationStyle
         /// </summary>
-        public bool EnableHttps { get; set; }
+        public EndpointStyle EndpointStyle { get; set; }
+        /// <summary>
+        /// Register AlbDomain on AlbMode
+        /// </summary>
+        public (string domain, string parentZoneId) AlbDomain { get; set; }
+        /// <summary>
         /// Enable ScaleIn on 0:00:00 (UTC)
         /// </summary>
         public bool EnableCronScaleInEc2 { get; set; }
@@ -48,12 +54,14 @@ namespace Cdk
         /// Execution time
         /// </summary>
         public DateTime ExecuteTime { get; set; }
+        /// <summary>
+        /// ReportId
+        /// </summary>
         public string ReportId { get; set; }
         /// <summary>
         /// Number of days to keep reports in S3 bucket.
         /// </summary>
-        public int DaysKeepReports { get; set; } = 7;
-        public bool UseVersionedS3 { get; set; }
+        public int DaysKeepReports { get; set; } = 3;
         /// <summary>
         /// Install CloudWatch Agent to EC2 MagicOnion and get MemoryUsage / TCP Established metrics.
         /// </summary>
@@ -83,6 +91,11 @@ namespace Cdk
             ReportId = $"{now.ToString("yyyyMMdd-HHmmss")}-{Guid.NewGuid().ToString()}";
         }
 
+        public BenchCommunicationStyle GetBenchCommunicationStyle()
+        {
+            return new BenchCommunicationStyle(EndpointStyle);
+        }
+
         public static ReportStackProps ParseOrDefault(IStackProps props, ReportStackProps @default = null)
         {
             if (props is ReportStackProps r)
@@ -96,6 +109,61 @@ namespace Cdk
         }
     }
 
+    public enum EndpointStyle
+    {
+        /// <summary>
+        /// Worker to Insecure MagicOnion with ServiceDiscovery, gRPC over Insecure TLS
+        /// </summary>
+        ServiceDiscoveryWithHttp = 0,
+        /// <summary>
+        /// Worker to HTTPS MagicOnion with ServiceDiscovery, gRPC over TLS
+        /// </summary>
+        ServiceDiscoveryWithHttps,
+        /// <summary>
+        /// Worker to HTTP MagicOnion with ALB (HTTPS), gRPC over TLS.
+        /// </summary>
+        Alb,
+    }
+    public class BenchCommunicationStyle
+    {
+        /// <summary>
+        /// MagicOnion - Benchmarker communication style. default: ServiceDiscovery.
+        /// </summary>
+        public CommunicationType CommunicationType { get; }
+        /// <summary>
+        /// Listen MagicOnion on Https
+        /// </summary>
+        public bool ListenMagicOnionTls { get; }
+        /// <summary>
+        /// Bench worker to target Https MagicOnion Endpoint
+        /// </summary>
+        public bool UseHttpsEndpoint { get; }
+
+        public BenchCommunicationStyle(EndpointStyle endpointStyle)
+        {
+            switch (endpointStyle)
+            {
+                case EndpointStyle.ServiceDiscoveryWithHttp:
+                    CommunicationType = CommunicationType.ServiceDiscovery;
+                        ListenMagicOnionTls = false;
+                        UseHttpsEndpoint = false;
+                        break;
+                case EndpointStyle.ServiceDiscoveryWithHttps:
+                    CommunicationType = CommunicationType.ServiceDiscovery;
+                    ListenMagicOnionTls = true;
+                    UseHttpsEndpoint = true;
+                    break;
+                case EndpointStyle.Alb:
+                    CommunicationType = CommunicationType.Alb;
+                    ListenMagicOnionTls = false;
+                    UseHttpsEndpoint = true;
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+    }
+
     /// <summary>
     /// FargateSpec follow to the rule.
     /// https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html
@@ -105,11 +173,11 @@ namespace Cdk
         /// <summary>
         /// Cpu Spec, default 256 = 0.25
         /// </summary>
-        public CpuSpec Cpu { get; set; }
+        public FargateCpu Cpu { get; set; }
         /// <summary>
         /// Memory Spec, default 512 = 0.5GB
         /// </summary>
-        public MemorySpec Memory { get; set; }
+        public FargateMemory Memory { get; set; }
         /// <summary>
         /// Cpu Size to use
         /// </summary>
@@ -121,10 +189,10 @@ namespace Cdk
         public int MemorySize => _memorysize;
         private int _memorysize;
 
-        public FargateSpec() : this(CpuSpec.Quater, MemorySpec.Low)
+        public FargateSpec() : this(FargateCpu.Quater, FargateMemory.Low)
         {
         }
-        public FargateSpec(CpuSpec cpu, MemorySpec memory)
+        public FargateSpec(FargateCpu cpu, FargateMemory memory)
         {
             Cpu = cpu;
             Memory = memory;
@@ -132,15 +200,15 @@ namespace Cdk
             _memorysize = CalculateMemorySize(Cpu, Memory);
         }
 
-        public FargateSpec(CpuSpec cpu, int memorySize)
+        public FargateSpec(FargateCpu cpu, int memorySize)
         {
             Cpu = cpu;
-            Memory = MemorySpec.Custom;
+            Memory = FargateMemory.Custom;
             _cpuSize = (int)Cpu;
             _memorysize = CalculateMemorySize(memorySize);
         }
 
-        private int CalculateMemorySize(CpuSpec cpu, MemorySpec memory) => (int)cpu * (int)memory;
+        private int CalculateMemorySize(FargateCpu cpu, FargateMemory memory) => (int)cpu * (int)memory;
         /// <summary>
         /// Memory Calculation for Custom MemorySize
         /// </summary>
@@ -150,11 +218,11 @@ namespace Cdk
         {
             switch (Cpu)
             {
-                case CpuSpec.Quater:
-                case CpuSpec.Half:
-                case CpuSpec.Single:
+                case FargateCpu.Quater:
+                case FargateCpu.Half:
+                case FargateCpu.Single:
                     throw new ArgumentOutOfRangeException($"You must select CpuSpec of Double or Quadruple.");
-                case CpuSpec.Double:
+                case FargateCpu.Double:
                     {
                         // 4096 < n < 16384, n can be increments of 1024
                         if (memorySize % 1024 != 0)
@@ -165,7 +233,7 @@ namespace Cdk
                             throw new ArgumentOutOfRangeException($"{nameof(memorySize)} too large, must be lower than {_cpuSize * 4}");
                     }
                     break;
-                case CpuSpec.Quadruple:
+                case FargateCpu.Quadruple:
                     {
                         // 8192 < n < 30720, n can be increments of 1024
                         if (memorySize % 1024 != 0)
@@ -181,7 +249,10 @@ namespace Cdk
         }
     }
 
-    public enum CpuSpec
+    /// <summary>
+    /// Fargate CpuSpec
+    /// </summary>
+    public enum FargateCpu
     {
         Quater = 256,
         Half = 512,
@@ -190,7 +261,10 @@ namespace Cdk
         Quadruple = 4096,
     }
 
-    public enum MemorySpec
+    /// <summary>
+    /// Fargate MemorySpec
+    /// </summary>
+    public enum FargateMemory
     {
         /// <summary>
         /// Only available when CpuSpec is Double or Quadruple.
@@ -199,5 +273,20 @@ namespace Cdk
         Low = 2,
         Medium = 4,
         High = 8,
+    }
+
+    /// <summary>
+    /// MagicOnion - Benchmarker communication style. default: ServiceDiscovery.
+    /// </summary>
+    public enum CommunicationType
+    {
+        /// <summary>
+        /// Use Service Discovery. (You can choose Non-TLS or TLS)
+        /// </summary>
+        ServiceDiscovery = 0,
+        /// <summary>
+        /// Use ALB.(force HTTP/2 over TLS)
+        /// </summary>
+        Alb,
     }
 }
