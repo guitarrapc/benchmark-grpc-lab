@@ -260,7 +260,7 @@ namespace Benchmark.ClientLib
             {
                 var credentials = !insecure 
                     ? _useSelfCertHttpsEndpoint
-                        ? new SslCredentials(File.ReadAllText("server.local.key"))
+                        ? new SslCredentials(File.ReadAllText("server.local.crt"))
                         : new SslCredentials()
                     : ChannelCredentials.Insecure;
 

@@ -65,8 +65,8 @@ namespace Cdk
             var masterDllDeployment = new BucketDeployment(this, "DeployMasterDll", new BucketDeploymentProps
             {
                 DestinationBucket = s3,
-                Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), "out/linux/server/")) },
-                DestinationKeyPrefix = "assembly/linux/server/"
+                Sources = new[] { Source.Asset(Path.Combine(Directory.GetCurrentDirectory(), $"out/linux/server/{magicOnionBinaryName}")) },
+                DestinationKeyPrefix = $"assembly/linux/server/{magicOnionBinaryName}"
             });
             var userdataDeployment = new BucketDeployment(this, "UserData", new BucketDeploymentProps
             {
@@ -151,7 +151,7 @@ namespace Cdk
                 }),
             });
             asg.AddSecretsReadGrant(ddToken, () => stackProps.UseEc2DatadogAgentProfiler);
-            var userdata = GetUserData(recreateMagicOnionTrigger, s3.BucketName, serviceDiscoveryServer.ServiceId, stackProps.UseEc2CloudWatchAgentProfiler, stackProps.UseEc2DatadogAgentProfiler);
+            var userdata = GetUserData(recreateMagicOnionTrigger, s3.BucketName, magicOnionBinaryName, serviceDiscoveryServer.ServiceId, stackProps.UseEc2CloudWatchAgentProfiler, stackProps.UseEc2DatadogAgentProfiler);
             asg.AddUserData(userdata);
             asg.UserData.AddSignalOnExitCommand(asg);
             asg.Node.AddDependency(masterDllDeployment);
@@ -198,7 +198,7 @@ namespace Cdk
                 {
                     { "DFRAME_MASTER_CONNECT_TO_HOST", $"{dframeMapName}.{serviceDiscoveryDomain}"},
                     { "DFRAME_MASTER_CONNECT_TO_PORT", "12345"},
-                    { "BENCH_SERVER_HOST", $"http://{serverMapName}.{serviceDiscoveryDomain}" },
+                    { "BENCH_SERVER_HOST", $"{benchTargetScheme}://{serverMapName}.{serviceDiscoveryDomain}" },
                     { "BENCH_REPORTID", stackProps.ReportId },
                     { "BENCH_S3BUCKET", s3.BucketName },
                 },
@@ -237,7 +237,7 @@ namespace Cdk
             });
             dframeMasterTaskDef.AddContainer("dframe", new ContainerDefinitionOptions
             {
-                Image = dframeImage,                
+                Image = dframeImage,
                 Environment = new Dictionary<string, string>
                 {
                     { "DFRAME_CLUSTER_NAME", cluster.ClusterName },
@@ -295,7 +295,7 @@ namespace Cdk
             new CfnOutput(this, "DFrameWorkerEcsTaskdefImage", new CfnOutputProps { Value = dockerImage.ImageUri });
         }
 
-        private string GetUserData(string recreateMagicOnionTrigger, string bucketName, string serviceDiscoveryId, bool useCloudWatchAgent, bool useDatadogAgent)
+        private string GetUserData(string recreateMagicOnionTrigger, string bucketName, string binaryName, string serviceDiscoveryId, bool useCloudWatchAgent, bool useDatadogAgent)
         {
             var source = @$"#!/bin/bash
 {recreateMagicOnionTrigger}";
@@ -308,13 +308,14 @@ yum install -y dotnet-sdk-5.0 aspnetcore-runtime-5.0
 . /etc/profile.d/dotnet-cli-tools-bin-path.sh
 # download server
 mkdir -p /var/MagicOnion.Benchmark/server
-aws s3 sync --exact-timestamps s3://{bucketName}/assembly/linux/server/ ~/server
-chmod +x ~/server/Benchmark.Server
+aws s3 sync --exact-timestamps s3://{bucketName}/assembly/linux/server/{binaryName}/ ~/server
+chmod +x ~/server/{binaryName}
 cp -Rf ~/server/ /var/MagicOnion.Benchmark/.
-cp -f /var/MagicOnion.Benchmark/server/Benchmark.Server.service /etc/systemd/system/.
-systemctl enable Benchmark.Server
-systemctl restart Benchmark.Server";
+cp -f /var/MagicOnion.Benchmark/server/{binaryName}.service /etc/systemd/system/.
+systemctl enable {binaryName}
+systemctl restart {binaryName}";
 
+            // ALB だろうが ServiceDiscovery だろうが登録はする。パラメーター変えるだけでどっちでもアクセスできるしね。
             // cloudmap
             source += $@"
 # cloudmap
@@ -469,7 +470,7 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
                     // ecs
                     new PolicyStatement(new PolicyStatementProps
                     {
-                        Actions = new[] 
+                        Actions = new[]
                         {
                             "ecs:Describe*",
                             "ecs:List*",
@@ -575,7 +576,7 @@ rm /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.d/default
 
     public static class TaskDefinitionExtensions
     {
-        public static void AddDatadogContainer(this TaskDefinition taskdef, string containerName,ISecret ddToken, Func<bool> enable)
+        public static void AddDatadogContainer(this TaskDefinition taskdef, string containerName, ISecret ddToken, Func<bool> enable)
         {
             if (enable != null && enable.Invoke())
             {
