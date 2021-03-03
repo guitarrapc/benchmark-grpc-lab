@@ -12,7 +12,7 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
-                Endpoint = Endpoint.Alb,
+                Endpoint = Endpoint.ServiceDiscoveryWithHttp,
                 AlbDomain = ("dev.cysharp.io", "Z075519318R3LY1VXMWII"),
                 ForceRecreateMagicOnion = false,
                 EnableCronScaleInEc2 = true,
@@ -21,7 +21,7 @@ namespace Cdk
                 UseFargateDatadogAgentProfiler = true,
                 MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE),
                 MasterFargate = new Fargate(Fargate.CpuSpec.Half, Fargate.MemorySpec.Low),
-                WorkerFargate = new Fargate(Fargate.CpuSpec.Single, Fargate.MemorySpec.Low),
+                WorkerFargate = new Fargate(Fargate.CpuSpec.Double, Fargate.MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
                 {
                     { "environment", "bench" },
@@ -91,9 +91,9 @@ namespace Cdk
             ReportId = $"{now.ToString("yyyyMMdd-HHmmss")}-{Guid.NewGuid().ToString()}";
         }
 
-        public BenchCommunicationStyle GetBenchCommunicationStyle()
+        public BenchNetwork GetBenchNetwork()
         {
-            return new BenchCommunicationStyle(Endpoint);
+            return new BenchNetwork(Endpoint);
         }
 
         public static ReportStackProps ParseOrDefault(IStackProps props, ReportStackProps @default = null)
@@ -125,16 +125,16 @@ namespace Cdk
         Alb,
     }
 
-    public class BenchCommunicationStyle
+    public class BenchNetwork
     {
         /// <summary>
-        /// MagicOnion - Benchmarker communication style. default: ServiceDiscovery.
+        /// MagicOnion - Benchmarker networking. default: ServiceDiscovery.
         /// </summary>
-        public CommunicationType Type { get; }
+        public NetworkType Type { get; }
         /// <summary>
         /// Indicate Alb is required.
         /// </summary>
-        public bool RequireAlb => Type == CommunicationType.Alb;
+        public bool RequireAlb => Type == NetworkType.Alb;
         /// <summary>
         /// Listen MagicOnion on Https
         /// </summary>
@@ -145,22 +145,22 @@ namespace Cdk
         public bool UseHttpsEndpoint { get; }
         public string EndpointSchema => UseHttpsEndpoint ? "https" : "http";
 
-        public BenchCommunicationStyle(Endpoint endpointStyle)
+        public BenchNetwork(Endpoint endpointStyle)
         {
             switch (endpointStyle)
             {
                 case Endpoint.ServiceDiscoveryWithHttp:
-                    Type = CommunicationType.ServiceDiscovery;
+                    Type = NetworkType.ServiceDiscovery;
                     ListenMagicOnionTls = false;
                     UseHttpsEndpoint = false;
                     break;
                 case Endpoint.ServiceDiscoveryWithHttps:
-                    Type = CommunicationType.ServiceDiscovery;
+                    Type = NetworkType.ServiceDiscovery;
                     ListenMagicOnionTls = true;
                     UseHttpsEndpoint = true;
                     break;
                 case Endpoint.Alb:
-                    Type = CommunicationType.Alb;
+                    Type = NetworkType.Alb;
                     ListenMagicOnionTls = false;
                     UseHttpsEndpoint = true;
                     break;
@@ -172,10 +172,10 @@ namespace Cdk
         /// <summary>
         /// MagicOnion - Benchmarker communication style. default: ServiceDiscovery.
         /// </summary>
-        public enum CommunicationType
+        public enum NetworkType
         {
             /// <summary>
-            /// Use Service Discovery. (You can choose Non-TLS or TLS)
+            /// Use Service Discovery, direct machine to machine. (You can choose Non-TLS or TLS)
             /// </summary>
             ServiceDiscovery = 0,
             /// <summary>
