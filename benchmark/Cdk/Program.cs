@@ -15,14 +15,14 @@ namespace Cdk
             var app = new App();
             new CdkStack(app, "MagicOnionBenchmarkCdkStack", new ReportStackProps
             {
-                BenchmarkEndpoint = BenchmarkEndpoint.Alb,
+                BenchmarkEndpoint = BenchmarkEndpoint.ServiceDiscoveryWithHttp,
                 AlbDomain = ("dev.cysharp.io", "Z075519318R3LY1VXMWII"),
                 ForceRecreateMagicOnion = false,
                 EnableMagicOnionScaleInCron = true,
                 UseEc2CloudWatchAgentProfiler = true,
                 UseEc2DatadogAgentProfiler = false,
                 UseFargateDatadogAgentProfiler = true,
-                MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.LARGE),
+                MagicOnionInstanceType = InstanceType.Of(InstanceClass.COMPUTE5_AMD, InstanceSize.XLARGE2),
                 MasterFargate = new Fargate(Fargate.CpuSpec.Half, Fargate.MemorySpec.Low),
                 WorkerFargate = new Fargate(Fargate.CpuSpec.Double, Fargate.MemorySpec.Low),
                 Tags = new Dictionary<string, string>()
@@ -136,11 +136,11 @@ namespace Cdk
     public enum BenchmarkEndpoint
     {
         /// <summary>
-        /// Worker to Insecure MagicOnion with ServiceDiscovery, direct machine to machine w/gRPC over Insecure TLS
+        /// Worker to Insecure MagicOnion with ServiceDiscovery, direct machine to machine over Insecure HTTP/2 (or HTTP for REST)
         /// </summary>
         ServiceDiscoveryWithHttp = 0,
         /// <summary>
-        /// Worker to HTTPS MagicOnion with ServiceDiscovery, direct machine to machine/gRPC over TLS
+        /// Worker to HTTPS MagicOnion with ServiceDiscovery, direct machine to machine over HTTPS
         /// </summary>
         ServiceDiscoveryWithHttps,
         /// <summary>
