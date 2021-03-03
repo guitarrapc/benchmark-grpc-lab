@@ -50,13 +50,11 @@ namespace Benchmark.Server.Hubs
         protected override ValueTask OnConnecting()
         {
             Statistics.HubConnected();
-            _logger.LogTrace($"{Statistics.HubConnections} New Client coming. ({Context.ContextId})");
             return CompletedTask;
         }
         protected override ValueTask OnDisconnected()
         {
             Statistics.HubDisconnected();
-            _logger.LogTrace($"Client disconnected.");
             return CompletedTask;
         }
 
