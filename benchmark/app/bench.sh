@@ -33,7 +33,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 		-e GRPC_SERVER_CPUS \
 		--network=host --detach --tty "${NAME}" >/dev/null
 	sleep 5
-	./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
+	. ./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro"\
 	    -v "${PWD}/payload:/payload:ro"\
 		--cpus $GRPC_CLIENT_CPUS \
@@ -45,7 +45,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
         --qps="${GRPC_CLIENT_QPS}" \
         --duration "${GRPC_BENCHMARK_DURATION}" \
-        --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
+        --data-file ${PWD}/payload/"${GRPC_REQUEST_PAYLOAD}" \
 		127.0.0.1:80 >"${RESULTS_DIR}/${NAME}".report
 	cat "${RESULTS_DIR}/${NAME}".report | grep "Requests/sec" | sed -E 's/^ +/    /'
 
