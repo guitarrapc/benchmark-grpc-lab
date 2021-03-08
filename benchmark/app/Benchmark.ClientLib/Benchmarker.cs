@@ -23,83 +23,22 @@ namespace Benchmark.ClientLib
     public class Benchmarker
     {
         private readonly string _path;
-        private readonly int[] _iterations;
         private readonly ILogger _logger;
         private readonly CancellationToken _cancellationToken;
-        private readonly bool _useSelfCertHttpsEndpoint;
-        private readonly string _clientId;
-        private ConcurrentDictionary<string, GrpcChannel> _grpcChannelCache;
-        private ConcurrentDictionary<string, Channel> _ccoreChannelCache;
+        private readonly string _clientId = Guid.NewGuid().ToString();
+        private readonly ConcurrentDictionary<string, GrpcChannel> _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
+        private readonly ConcurrentDictionary<string, Channel> _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
 
-        public bool FailFast { get; set; }
+        public BenchmarkerConfig Config { get; init; } = new BenchmarkerConfig();
 
-        public Benchmarker(string path, int[] iterations, ILogger logger, CancellationToken cancellationToken, bool useHttpsEndpoint)
-        {
-            _path = path;
-            _iterations = iterations;
-            _logger = logger;
-            _cancellationToken = cancellationToken;
-            _useSelfCertHttpsEndpoint = useHttpsEndpoint;
-            _clientId = Guid.NewGuid().ToString();
-            _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
-            _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
-        }
         public Benchmarker(string path, ILogger logger, CancellationToken cancellationToken)
         {
             _path = path;
             _logger = logger;
             _cancellationToken = cancellationToken;
-            _clientId = Guid.NewGuid().ToString();
-            _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
-            _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
         }
 
         private static string NewReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();
-        
-        /// <summary>
-        /// Run Unary and Hub Benchmark
-        /// </summary>
-        /// <param name="hostAddress"></param>
-        /// <param name="reportId"></param>
-        /// <returns></returns>
-        public async Task BenchAll(string hostAddress = "http://localhost:5000", string reportId = "")
-        {
-            if (string.IsNullOrEmpty(reportId))
-                reportId = NewReportId();
-            var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
-
-            var reporter = new BenchReporter(reportId, _clientId, executeId);
-            reporter.Begin();
-            {
-                // single channel
-                //// Connect to the server using gRPC channel.
-                //var channel = GetOrCreateChannel(hostAddress);
-                //var unary = new UnaryBenchmarkScenario(channel, reporter);
-                //await using var hub = new HubBenchmarkScenario(channel, reporter);
-
-                foreach (var iteration in _iterations)
-                {
-                    // separate channel
-                    // Connect to the server using gRPC channel.
-                    var channel = CreateGrpcChannel(hostAddress);
-                    var unary = new UnaryBenchmarkScenario(channel, reporter);
-                    await using var hub = new HubBenchmarkScenario(channel, reporter);
-
-                    // Unary
-                    _logger?.LogInformation($"Begin unary {iteration} requests.");
-                    await unary.Run(iteration);
-
-                    // StreamingHub
-                    _logger?.LogInformation($"Begin Streaming {iteration} requests.");
-                    await hub.Run(iteration);
-                }
-            }
-            reporter.End();
-
-            await OutputAsync(reporter);
-        }
 
         /// <summary>
         /// Run Unary Benchmark
@@ -124,15 +63,15 @@ namespace Benchmark.ClientLib
                 //var channel = GetOrCreateChannel(hostAddress);
                 //var scenario = new UnaryBenchmarkScenario(channel, reporter);
 
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new UnaryBenchmarkScenario(channel, reporter);
+                    var scenario = new UnaryBenchmarkScenario(channel, reporter, Config);
 
                     _logger?.LogInformation($"Begin unary {iteration} requests.");
-                    await scenario.Run(iteration);
+                    await scenario.Run(iteration, _cancellationToken);
                 }
             }
             reporter.End();
@@ -163,11 +102,11 @@ namespace Benchmark.ClientLib
                 //var channel = GetOrCreateChannel(hostAddress);
                 //await using var scenario = new HubBenchmarkScenario(channel, reporter);
 
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
                     // separate channel
                     var channel = CreateGrpcChannel(hostAddress);
-                    await using var scenario = new HubBenchmarkScenario(channel, reporter);
+                    await using var scenario = new HubBenchmarkScenario(channel, reporter, Config);
 
                     _logger?.LogInformation($"Begin Streaming {iteration} requests.");
                     await scenario.Run(iteration);
@@ -202,7 +141,7 @@ namespace Benchmark.ClientLib
                 //var channel = GetOrCreateChannel(hostAddress);
                 //await using var scenario = new HubLongRunBenchmarkScenario(channel, reporter);
 
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
                     // separate channel
                     // Connect to the server using gRPC channel.
@@ -239,8 +178,8 @@ namespace Benchmark.ClientLib
             var reporter = new BenchReporter(reportId, _clientId, executeId);
             reporter.Begin();
             {
-                var credentials = !insecure 
-                    ? _useSelfCertHttpsEndpoint
+                var credentials = !insecure
+                    ? Config.UseSelfCertEndpoint
                         ? new SslCredentials(File.ReadAllText("server.local.crt"))
                         : new SslCredentials()
                     : ChannelCredentials.Insecure;
@@ -249,7 +188,7 @@ namespace Benchmark.ClientLib
                 //var channel = GetOrCreateCCoreChannel(hostAddress, credentials);
                 //await using var scenario = new HubLongRunBenchmarkScenario(channel, reporter);
 
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
                     // separate channel
                     // Connect to the server using gRPC channel.
@@ -288,12 +227,12 @@ namespace Benchmark.ClientLib
                 //var channel = GetOrCreateChannel(hostAddress);
                 //var scenario = new GrpcBenchmarkScenario(channel, reporter);
 
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new GrpcBenchmarkScenario(channel, reporter);
+                    var scenario = new GrpcBenchmarkScenario(channel, reporter, Config);
 
                     _logger?.LogInformation($"Begin grpc {iteration} requests.");
                     await scenario.Run(iteration);
@@ -324,9 +263,9 @@ namespace Benchmark.ClientLib
             {
                 // single thread-safe client
                 var apiClient = new ApiBenchmarkScenario.ApiClient(hostAddress);
-                foreach (var iteration in _iterations)
+                foreach (var iteration in Config.TotalRequests)
                 {
-                    var scenario = new ApiBenchmarkScenario(apiClient, reporter);
+                    var scenario = new ApiBenchmarkScenario(apiClient, reporter, Config);
 
                     _logger?.LogInformation($"Begin api {iteration} requests.");
                     await scenario.Run(iteration);
@@ -502,7 +441,7 @@ namespace Benchmark.ClientLib
                 // memo: create Channel Pool and random get pool for each connection to avoid too match channel connection.
                 EnableMultipleHttp2Connections = true,
             };
-            if (_useSelfCertHttpsEndpoint)
+            if (Config.UseSelfCertEndpoint)
             {
                 // allow non trusted certificate
                 RemoteCertificateValidationCallback validationHandler = (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) => true;

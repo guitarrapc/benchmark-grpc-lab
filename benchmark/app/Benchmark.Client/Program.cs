@@ -35,19 +35,6 @@ public class BenchmarkRunner : ConsoleAppBase
     private bool IsHttpsEndpoint(string endpoint) => endpoint.StartsWith("https://");
 
     /// <summary>
-    /// Run Unary and Hub Benchmark
-    /// </summary>
-    /// <param name="hostAddress"></param>
-    /// <param name="reportId"></param>
-    /// <returns></returns>
-    public async Task BenchAll(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
-    {
-        var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
-        await benchmarker.BenchAll(hostAddress, reportId);
-    }
-
-    /// <summary>
     /// Run Unary Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
@@ -56,7 +43,14 @@ public class BenchmarkRunner : ConsoleAppBase
     public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
+        {
+            Config = new BenchmarkerConfig
+            {
+                TotalRequests = iter,
+                UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+            }
+        };
         await benchmarker.BenchUnary(hostAddress, reportId);
     }
 
@@ -69,7 +63,14 @@ public class BenchmarkRunner : ConsoleAppBase
     public async Task BenchHub(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
+        {
+            Config = new BenchmarkerConfig
+            {
+                TotalRequests = iter,
+                UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+            }
+        };
         await benchmarker.BenchHub(hostAddress, reportId);
     }
 
@@ -82,7 +83,14 @@ public class BenchmarkRunner : ConsoleAppBase
     public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
+        {
+            Config = new BenchmarkerConfig
+            {
+                TotalRequests = iter,
+                UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+            }
+        };
         await benchmarker.BenchLongRunHub(waitMilliseconds, true, hostAddress, reportId);
     }
 
@@ -95,7 +103,14 @@ public class BenchmarkRunner : ConsoleAppBase
     public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
+        {
+            Config = new BenchmarkerConfig
+            {
+                TotalRequests = iter,
+                UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+            }
+        };
         await benchmarker.BenchGrpc(hostAddress, reportId);
     }
 
@@ -108,7 +123,14 @@ public class BenchmarkRunner : ConsoleAppBase
     public async Task BenchApi(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
-        var benchmarker = new Benchmarker(_path, iter, Context.Logger, Context.CancellationToken, IsHttpsEndpoint(hostAddress));
+        var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
+        {
+            Config = new BenchmarkerConfig
+            {
+                TotalRequests = iter,
+                UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+            }
+        };
         await benchmarker.BenchApi(hostAddress, reportId);
     }
 

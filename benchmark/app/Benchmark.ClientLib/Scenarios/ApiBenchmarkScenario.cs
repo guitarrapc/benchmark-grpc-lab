@@ -14,12 +14,14 @@ namespace Benchmark.ClientLib.Scenarios
     {
         private readonly ApiClient _client;
         private readonly BenchReporter _reporter;
+        private readonly BenchmarkerConfig _config;
         private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public ApiBenchmarkScenario(ApiClient client, BenchReporter reporter)
+        public ApiBenchmarkScenario(ApiClient client, BenchReporter reporter, BenchmarkerConfig config)
         {
             _client = client;
             _reporter = reporter;
+            _config = config;
         }
 
         public async Task Run(int requestCount)
@@ -66,12 +68,12 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task PlainTextAsync(int requestCount)
         {
+            var data = new BenchmarkData
+            {
+                PlainText = _config.GetRequestPayload(),
+            };
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 var json = JsonSerializer.Serialize<BenchmarkData>(data);
                 try
                 {
@@ -86,13 +88,13 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task PlainTextAsyncParallel(int requestCount)
         {
+            var data = new BenchmarkData
+            {
+                PlainText = _config.GetRequestPayload(),
+            };
             var tasks = new List<Task>();
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 var json = JsonSerializer.Serialize<BenchmarkData>(data);
                 try
                 {

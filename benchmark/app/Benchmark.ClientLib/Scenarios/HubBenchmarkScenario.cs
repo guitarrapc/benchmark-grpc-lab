@@ -13,13 +13,15 @@ namespace Benchmark.ClientLib.Scenarios
     {
         private readonly GrpcChannel _channel;
         private readonly BenchReporter _reporter;
+        private readonly BenchmarkerConfig _config;
         private IBenchmarkHub _client;
         private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public HubBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
+        public HubBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, BenchmarkerConfig config)
         {
             _channel = channel;
             _reporter = reporter;
+            _config = config;
         }
 
         public async Task Run(int requestCount)
@@ -97,12 +99,12 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task PlainTextAsync(int requestCount)
         {
+            var data = new BenchmarkData
+            {
+                PlainText = _config.GetRequestPayload(),
+            };
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 try
                 {
                     await _client.Process(data);
@@ -116,13 +118,13 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task PlainTextParallelAsync(int requestCount)
         {
+            var data = new BenchmarkData
+            {
+                PlainText = _config.GetRequestPayload(),
+            };
             var tasks = new List<Task>();
             for (var i = 0; i < requestCount; i++)
             {
-                var data = new BenchmarkData
-                {
-                    PlainText = i.ToString(),
-                };
                 try
                 {
                     var task = _client.Process(data);

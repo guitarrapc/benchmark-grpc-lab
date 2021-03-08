@@ -141,9 +141,13 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"))
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)
@@ -196,9 +200,13 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"))
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)
@@ -251,9 +259,13 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"))
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)
@@ -305,9 +317,13 @@ namespace ConsoleAppEcs
             var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"))
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)
@@ -360,9 +376,13 @@ namespace ConsoleAppEcs
             _waitMilliseconds = 240_000; // 1000 = 1sec
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, _hostAddress.StartsWith("https://"))
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)
@@ -423,9 +443,13 @@ namespace ConsoleAppEcs
             _isHttps = _hostAddress.StartsWith("https://");
 
             Console.WriteLine($"waitMilliseconds {_waitMilliseconds}ms, iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
-            _benchmarker = new Benchmarker(path, iterations, null, _cts.Token, !_isHttps)
+            _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
-                FailFast = true,
+                Config = new BenchmarkerConfig
+                {
+                    TotalRequests = iterations,
+                    UseSelfCertEndpoint = _isHttps,
+                }
             };
         }
         public override async Task ExecuteAsync(WorkerContext context)

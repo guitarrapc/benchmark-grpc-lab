@@ -10,16 +10,15 @@ namespace Benchmark.ClientLib.Scenarios
     public class GrpcBenchmarkScenario
     {
         private readonly Greeter.GreeterClient _client;
-        private readonly HelloRequest _simpleRequest;
         private readonly BenchReporter _reporter;
+        private readonly BenchmarkerConfig _config;
         private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public GrpcBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
+        public GrpcBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, BenchmarkerConfig config)
         {
             _client = new Greeter.GreeterClient(channel);
             _reporter = reporter;
-
-            _simpleRequest = new HelloRequest {  Name = "100" };
+            _config = config;
         }
 
         public async Task Run(int requestCount)
@@ -46,11 +45,12 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task SayHelloAsync(int requestCount)
         {
+            var data = new HelloRequest { Name = _config.GetRequestPayload() };
             for (var i = 0; i <= requestCount; i++)
             {
                 try
                 {
-                    await _client.SayHelloAsync(_simpleRequest);
+                    await _client.SayHelloAsync(data);
                 }
                 catch (Exception ex)
                 {
