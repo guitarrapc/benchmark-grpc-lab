@@ -34,8 +34,8 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 		--network=host --detach --tty "${NAME}" >/dev/null
 	sleep 5
 	./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
-	docker run --name ghz --rm --network=host -v "${CURRENT}/proto:/proto:ro"\
-	    -v "${CURRENT}/payload:/payload:ro"\
+	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro"\
+	    -v "${PWD}/payload:/payload:ro"\
 		--cpus $GRPC_CLIENT_CPUS \
 		--entrypoint=ghz infoblox/ghz:0.0.1 \
 		--proto=/proto/helloworld/helloworld.proto \
@@ -53,6 +53,6 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	docker container stop "${NAME}" >/dev/null
 done
 
-sh analyze.sh $RESULTS_DIR
+. ./analyze.sh $RESULTS_DIR
 
 echo "All done."
