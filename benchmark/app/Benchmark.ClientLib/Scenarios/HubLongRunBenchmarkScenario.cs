@@ -3,18 +3,20 @@ using Benchmark.Server.Shared;
 using Grpc.Net.Client;
 using MagicOnion.Client;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Scenarios
 {
-    public class HubLongRunBenchmarkScenario : ScenarioBase, ILongRunBenchmarkHubReciever, IAsyncDisposable
+    public class HubLongRunBenchmarkScenario : ILongRunBenchmarkHubReciever, IAsyncDisposable
     {
         private readonly GrpcChannel _channel;
         private readonly BenchReporter _reporter;
         private ILongRunBenchmarkHub _client;
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public HubLongRunBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, bool failFast) : base(failFast)
+        public HubLongRunBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
         {
             _channel = channel;
             _reporter = reporter;
@@ -35,12 +37,11 @@ namespace Benchmark.ClientLib.Scenarios
                     End = DateTime.UtcNow,
                     Duration = statistics.Elapsed,
                     RequestCount = 0, // connect is setup, not count as request.
-                    Errors = Error,
+                    Errors = _errors.Count,
                     Type = nameof(Grpc.Core.MethodType.DuplexStreaming),
                 });
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
-            ResetError();
 
             using (var statistics = new Statistics(nameof(ProcessAsync)))
             {
@@ -55,12 +56,11 @@ namespace Benchmark.ClientLib.Scenarios
                     End = DateTime.UtcNow,
                     Duration = statistics.Elapsed,
                     RequestCount = requestCount,
-                    Errors = Error,
+                    Errors = _errors.Count,
                     Type = nameof(Grpc.Core.MethodType.DuplexStreaming),
                 });
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
-            ResetError();
 
             using (var statistics = new Statistics(nameof(EndAsync)))
             {
@@ -74,10 +74,10 @@ namespace Benchmark.ClientLib.Scenarios
                     End = DateTime.UtcNow,
                     Duration = statistics.Elapsed,
                     RequestCount = 0, // end is teardown, not count as request.
-                    Errors = Error,
+                    Errors = _errors.Count,
                     Type = nameof(Grpc.Core.MethodType.DuplexStreaming),
                 });
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
         }
 
@@ -91,10 +91,7 @@ namespace Benchmark.ClientLib.Scenarios
             }
             catch (Exception ex)
             {
-                if (FailFast)
-                    throw;
-                IncrementError();
-                PostException(ex);
+                _errors.TryAdd(ex.GetType().FullName, ex);
             }
         }
 
@@ -124,10 +121,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
         }
@@ -150,10 +144,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
 
@@ -168,10 +159,7 @@ namespace Benchmark.ClientLib.Scenarios
             }
             catch (Exception ex)
             {
-                if (FailFast)
-                    throw;
-                IncrementError();
-                PostException(ex);
+                _errors.TryAdd(ex.GetType().FullName, ex);
             }
         }
 

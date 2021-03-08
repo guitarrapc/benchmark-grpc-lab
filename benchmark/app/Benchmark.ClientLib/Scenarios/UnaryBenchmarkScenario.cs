@@ -6,17 +6,19 @@ using MagicOnion;
 using MagicOnion.Client;
 using MessagePack;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Scenarios
 {
-    public class UnaryBenchmarkScenario : ScenarioBase
+    public class UnaryBenchmarkScenario
     {
         private readonly IBenchmarkService _client;
         private readonly BenchReporter _reporter;
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public UnaryBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, bool failFast) : base(failFast)
+        public UnaryBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
         {
             _client = MagicOnionClient.Create<IBenchmarkService>(channel);
             _reporter = reporter;
@@ -38,9 +40,9 @@ namespace Benchmark.ClientLib.Scenarios
                     Duration = statistics.Elapsed,
                     RequestCount = requestCount,
                     Type = nameof(Grpc.Core.MethodType.Unary),
-                    Errors = Error,
+                    Errors = _errors.Count,
                 });
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
         }
 
@@ -57,11 +59,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-
-                    IncrementError();
-                    PostException(ex);                    
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
             await ValueTaskUtils.WhenAll(tasks);
@@ -81,11 +79,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
         }
@@ -106,11 +100,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
             await ValueTaskUtils.WhenAll(tasks);

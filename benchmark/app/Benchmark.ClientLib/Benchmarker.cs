@@ -84,8 +84,8 @@ namespace Benchmark.ClientLib
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    var unary = new UnaryBenchmarkScenario(channel, reporter, FailFast);
-                    await using var hub = new HubBenchmarkScenario(channel, reporter, FailFast);
+                    var unary = new UnaryBenchmarkScenario(channel, reporter);
+                    await using var hub = new HubBenchmarkScenario(channel, reporter);
 
                     // Unary
                     _logger?.LogInformation($"Begin unary {iteration} requests.");
@@ -129,7 +129,7 @@ namespace Benchmark.ClientLib
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new UnaryBenchmarkScenario(channel, reporter, FailFast);
+                    var scenario = new UnaryBenchmarkScenario(channel, reporter);
 
                     _logger?.LogInformation($"Begin unary {iteration} requests.");
                     await scenario.Run(iteration);
@@ -167,7 +167,7 @@ namespace Benchmark.ClientLib
                 {
                     // separate channel
                     var channel = CreateGrpcChannel(hostAddress);
-                    await using var scenario = new HubBenchmarkScenario(channel, reporter, FailFast);
+                    await using var scenario = new HubBenchmarkScenario(channel, reporter);
 
                     _logger?.LogInformation($"Begin Streaming {iteration} requests.");
                     await scenario.Run(iteration);
@@ -207,7 +207,7 @@ namespace Benchmark.ClientLib
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    await using var scenario = new HubLongRunBenchmarkScenario(channel, reporter, FailFast);
+                    await using var scenario = new HubLongRunBenchmarkScenario(channel, reporter);
 
                     _logger?.LogInformation($"Begin LongRun Streaming {iteration} requests.");
                     await scenario.Run(iteration, waitMilliseconds, parallel);
@@ -254,7 +254,7 @@ namespace Benchmark.ClientLib
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateCCoreChannel(hostAddress, credentials);
-                    await using var scenario = new CCoreHubLongRunBenchmarkScenario(channel, reporter, FailFast);
+                    await using var scenario = new CCoreHubLongRunBenchmarkScenario(channel, reporter);
 
                     _logger?.LogInformation($"Begin Ccore LongRun Streaming {iteration} requests.");
                     await scenario.Run(iteration, waitMilliseconds, parallel);
@@ -293,7 +293,7 @@ namespace Benchmark.ClientLib
                     // separate channel
                     // Connect to the server using gRPC channel.
                     var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new GrpcBenchmarkScenario(channel, reporter, FailFast);
+                    var scenario = new GrpcBenchmarkScenario(channel, reporter);
 
                     _logger?.LogInformation($"Begin grpc {iteration} requests.");
                     await scenario.Run(iteration);
@@ -326,7 +326,7 @@ namespace Benchmark.ClientLib
                 var apiClient = new ApiBenchmarkScenario.ApiClient(hostAddress);
                 foreach (var iteration in _iterations)
                 {
-                    var scenario = new ApiBenchmarkScenario(apiClient, reporter, FailFast);
+                    var scenario = new ApiBenchmarkScenario(apiClient, reporter);
 
                     _logger?.LogInformation($"Begin api {iteration} requests.");
                     await scenario.Run(iteration);

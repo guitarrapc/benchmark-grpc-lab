@@ -1,6 +1,7 @@
 using Benchmark.ClientLib.Reports;
 using Benchmark.Server.Shared;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
@@ -9,12 +10,13 @@ using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Scenarios
 {
-    public class ApiBenchmarkScenario : ScenarioBase
+    public class ApiBenchmarkScenario
     {
         private readonly ApiClient _client;
         private readonly BenchReporter _reporter;
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public ApiBenchmarkScenario(ApiClient client, BenchReporter reporter, bool failFast) : base(failFast)
+        public ApiBenchmarkScenario(ApiClient client, BenchReporter reporter)
         {
             _client = client;
             _reporter = reporter;
@@ -36,10 +38,10 @@ namespace Benchmark.ClientLib.Scenarios
                     Duration = statistics.Elapsed,
                     RequestCount = requestCount,
                     Type = nameof(Grpc.Core.MethodType.Unary),
-                    Errors = Error,
+                    Errors = _errors.Count,
                 });
 
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
         }
 
@@ -56,10 +58,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
             await Task.WhenAll(tasks);
@@ -80,10 +79,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
         }
@@ -105,10 +101,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
             await Task.WhenAll(tasks);

@@ -2,17 +2,19 @@ using Benchmark.ClientLib.Reports;
 using Benchmark.Server;
 using Grpc.Net.Client;
 using System;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Scenarios
 {
-    public class GrpcBenchmarkScenario : ScenarioBase
+    public class GrpcBenchmarkScenario
     {
         private readonly Greeter.GreeterClient _client;
         private readonly HelloRequest _simpleRequest;
         private readonly BenchReporter _reporter;
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public GrpcBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, bool failFast) : base(failFast)
+        public GrpcBenchmarkScenario(GrpcChannel channel, BenchReporter reporter)
         {
             _client = new Greeter.GreeterClient(channel);
             _reporter = reporter;
@@ -36,9 +38,9 @@ namespace Benchmark.ClientLib.Scenarios
                     Duration = statistics.Elapsed,
                     RequestCount = requestCount,
                     Type = nameof(Grpc.Core.MethodType.Unary),
-                    Errors = Error,
+                    Errors = _errors.Count,
                 });
-                statistics.HasError(Error);
+                statistics.HasError(_errors.Count);
             }
         }
 
@@ -52,10 +54,7 @@ namespace Benchmark.ClientLib.Scenarios
                 }
                 catch (Exception ex)
                 {
-                    if (FailFast)
-                        throw;
-                    IncrementError();
-                    PostException(ex);
+                    _errors.TryAdd(ex.GetType().FullName, ex);
                 }
             }
         }
