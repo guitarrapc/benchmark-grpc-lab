@@ -35,7 +35,7 @@ namespace Benchmark.Server
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapMagicOnionService();
-                endpoints.MapGrpcService<GreeterService>();
+                endpoints.MapGrpcService<GreeterImpl>();
 
                 endpoints.MapGrpcHealthChecksService();
 

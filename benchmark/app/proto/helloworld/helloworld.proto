@@ -10,12 +10,12 @@ service Greeter {
   rpc SayHello (HelloRequest) returns (HelloReply);
 }
 
-// The request message containing bool.
+// The request message containing the user's name.
 message HelloRequest {
-  bool value = 1;
+  string name = 1;
 }
 
-// The response message containing bool.
+// The response message containing the greetings
 message HelloReply {
-  bool message = 1;
+  string message = 1;
 }

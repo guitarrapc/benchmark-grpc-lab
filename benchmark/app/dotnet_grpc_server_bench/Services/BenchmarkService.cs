@@ -29,17 +29,17 @@ namespace Benchmark.Server.Services
             Reader = pipe.Reader;
         }
 
-        public async UnaryResult<int> SumAsync(int x, int y)
+        public UnaryResult<int> SumAsync(int x, int y)
         {
             Statistics.UnaryConnected();
             try
             {
-                return x + y;
+                return UnaryResult(x + y);
             }
             catch
             {
                 Statistics.UnaryError();
-                return 0;
+                return UnaryResult(0);
             }
             finally
             {
@@ -47,7 +47,7 @@ namespace Benchmark.Server.Services
             }
         }
 
-        public async UnaryResult<Nil> PlainTextAsync(BenchmarkData data)
+        public UnaryResult<Nil> PlainTextAsync(BenchmarkData data)
         {
             Statistics.UnaryConnected();
             try
@@ -62,7 +62,7 @@ namespace Benchmark.Server.Services
             {
                 Statistics.UnaryDisconnected();
             }
-            return Nil.Default;
+            return UnaryResult(Nil.Default);
         }
 
         private void ProcessRequest(RequestType requestType, BenchmarkData body)

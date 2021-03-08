@@ -17,7 +17,7 @@ namespace Benchmark.ClientLib.Scenarios
             _client = new Greeter.GreeterClient(channel);
             _reporter = reporter;
 
-            _simpleRequest = new HelloRequest { Value = true };
+            _simpleRequest = new HelloRequest {  Name = "100" };
         }
 
         public async Task Run(int requestCount)

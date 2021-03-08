@@ -88,7 +88,7 @@ namespace Benchmark.ClientLib.Storage
         /// <param name="prefix"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        public async Task<string[]> Get(string path, string prefix, CancellationToken ct = default)
+        public Task<string[]> Get(string path, string prefix, CancellationToken ct = default)
         {
             var dir = $"{path}/{prefix.TrimEnd('/')}";
             _logger?.LogInformation($"Get content from local storage {dir}");
@@ -102,7 +102,7 @@ namespace Benchmark.ClientLib.Storage
                 var content = File.ReadAllText(item);
                 contents.Add(content);
             }
-            return contents.ToArray();
+            return Task.FromResult(contents.ToArray());
         }
 
         /// <summary>
@@ -112,12 +112,12 @@ namespace Benchmark.ClientLib.Storage
         /// <param name="prefix"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        public async Task<string[]> List(string path, string prefix, CancellationToken ct)
+        public Task<string[]> List(string path, string prefix, CancellationToken ct)
         {
             var dir = $"{path}/{prefix.TrimEnd('/')}";
             _logger?.LogInformation($"listing content from local storage {dir}");
 
-            return Directory.EnumerateFiles(dir).ToArray();
+            return Task.FromResult(Directory.EnumerateFiles(dir).ToArray());
         }
 
         /// <summary>
@@ -130,14 +130,14 @@ namespace Benchmark.ClientLib.Storage
         /// <param name="overwrite"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        public async Task<string> Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
+        public Task<string> Save(string path, string prefix, string name, string content, bool overwrite = false, CancellationToken ct = default)
         {
             var dir = $"{path}/{prefix.TrimEnd('/')}";
             Directory.CreateDirectory(dir);
 
             var basePath = Path.Combine(dir, name);
             var savePath = Save(content, basePath, overwrite);
-            return savePath;
+            return Task.FromResult(savePath);
         }
 
         private string Save(string content, string path, bool overwrite)

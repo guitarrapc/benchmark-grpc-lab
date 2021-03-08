@@ -79,9 +79,9 @@ namespace Benchmark.ClientLib.LoadTester
             };
         }
 
-        public async Task<ClientInfo[]> ListClients(CancellationToken ct = default)
+        public Task<ClientInfo[]> ListClients(CancellationToken ct = default)
         {
-            return new[] { CurrentInfo };
+            return Task.FromResult(new[] { CurrentInfo });
         }
 
         public async Task Run(int processCount, string iterations, string benchCommand, string hostAddress, string reportId, CancellationToken ct = default)

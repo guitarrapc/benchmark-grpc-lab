@@ -42,6 +42,7 @@ namespace Benchmark.ClientLib
             _useSelfCertHttpsEndpoint = useHttpsEndpoint;
             _clientId = Guid.NewGuid().ToString();
             _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
+            _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
         }
         public Benchmarker(string path, ILogger logger, CancellationToken cancellationToken)
         {
@@ -50,6 +51,7 @@ namespace Benchmark.ClientLib
             _cancellationToken = cancellationToken;
             _clientId = Guid.NewGuid().ToString();
             _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
+            _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
         }
 
         private static string NewReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();
@@ -503,7 +505,7 @@ namespace Benchmark.ClientLib
             if (_useSelfCertHttpsEndpoint)
             {
                 // allow non trusted certificate
-                RemoteCertificateValidationCallback validationHandler = (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
+                RemoteCertificateValidationCallback validationHandler = (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) => true;
                 handler.SslOptions = new SslClientAuthenticationOptions
                 {
                     RemoteCertificateValidationCallback = validationHandler,

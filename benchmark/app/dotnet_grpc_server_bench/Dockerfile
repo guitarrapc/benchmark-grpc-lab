@@ -6,10 +6,10 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["app/Benchmark.Server/Benchmark.Server.csproj", "app/Benchmark.Server/"]
-RUN dotnet restore "app/Benchmark.Server/Benchmark.Server.csproj"
+COPY ["dotnet_grpc_server_bench/Benchmark.Server.csproj", "dotnet_grpc_server_bench/"]
+RUN dotnet restore "dotnet_grpc_server_bench/Benchmark.Server.csproj"
 COPY . .
-WORKDIR "/src/app/Benchmark.Server"
+WORKDIR "/src/dotnet_grpc_server_bench"
 RUN dotnet build "Benchmark.Server.csproj" -c Release -o /app/build
 
 FROM build AS publish

@@ -37,9 +37,10 @@ namespace Benchmark.Server.Hubs
             (room, _) = await Group.AddAsync(groupName, name);
         }
 
-        public async Task Process(BenchmarkData data)
+        public Task Process(BenchmarkData data)
         {
             ProcessRequest(data);
+            return Task.CompletedTask;
         }
 
         public async Task End()
