@@ -45,7 +45,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
         --qps="${GRPC_CLIENT_QPS}" \
         --duration "${GRPC_BENCHMARK_DURATION}" \
-        --data-file ${PWD}/payload/"${GRPC_REQUEST_PAYLOAD}" \
+        --data-file /payload/"${GRPC_REQUEST_PAYLOAD}" \
 		127.0.0.1:80 >"${RESULTS_DIR}/${NAME}".report
 	cat "${RESULTS_DIR}/${NAME}".report | grep "Requests/sec" | sed -E 's/^ +/    /'
 

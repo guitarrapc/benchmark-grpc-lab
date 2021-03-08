@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option csharp_namespace = "Benchmark.Server";
 
-package greet;
+package helloworld;
 
 // The greeting service definition.
 service Greeter {
