@@ -40,7 +40,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 		--entrypoint=ghz infoblox/ghz:0.0.1 \
 		--proto=/proto/helloworld/helloworld.proto \
 		--call=helloworld.Greeter.SayHello \
-        --plaintext \
+        --insecure \
         --concurrency="${GRPC_CLIENT_CONCURRENCY}" \
         --connections="${GRPC_CLIENT_CONNECTIONS}" \
         --qps="${GRPC_CLIENT_QPS}" \
