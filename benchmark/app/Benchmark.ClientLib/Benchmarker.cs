@@ -60,18 +60,13 @@ namespace Benchmark.ClientLib
             {
                 //// single channel
                 //// Connect to the server using gRPC channel.
-                //var channel = GetOrCreateChannel(hostAddress);
-                //var scenario = new UnaryBenchmarkScenario(channel, reporter);
+                var channel = CreateGrpcChannel(hostAddress);
+                var scenario = new UnaryBenchmarkScenario(channel, reporter, Config);
 
-                foreach (var iteration in Config.TotalRequests)
+                foreach (var request in Config.TotalRequests)
                 {
-                    // separate channel
-                    // Connect to the server using gRPC channel.
-                    var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new UnaryBenchmarkScenario(channel, reporter, Config);
-
-                    _logger?.LogInformation($"Begin unary {iteration} requests.");
-                    await scenario.Run(iteration, _cancellationToken);
+                    _logger?.LogInformation($"Begin unary requests. iteration {request}");
+                    await scenario.Run(request, _cancellationToken);
                 }
             }
             reporter.End();
@@ -212,6 +207,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -219,23 +215,17 @@ namespace Benchmark.ClientLib
             _logger?.LogInformation($"reportId: {reportId}");
             _logger?.LogInformation($"executeId: {executeId}");
 
+            var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
+
             var reporter = new BenchReporter(reportId, _clientId, executeId, Framework.GrpcDotnet);
             reporter.Begin();
             {
-                // single channel
-                // Connect to the server using gRPC channel.
-                //var channel = GetOrCreateChannel(hostAddress);
-                //var scenario = new GrpcBenchmarkScenario(channel, reporter);
+                var scenario = new GrpcBenchmarkScenario(channels, reporter, Config);
 
                 foreach (var iteration in Config.TotalRequests)
                 {
-                    // separate channel
-                    // Connect to the server using gRPC channel.
-                    var channel = CreateGrpcChannel(hostAddress);
-                    var scenario = new GrpcBenchmarkScenario(channel, reporter, Config);
-
                     _logger?.LogInformation($"Begin grpc {iteration} requests.");
-                    await scenario.Run(iteration);
+                    await scenario.Run(iteration, _cancellationToken);
                 }
             }
             reporter.End();
@@ -281,7 +271,7 @@ namespace Benchmark.ClientLib
             // output
             var benchJson = reporter.ToJson();
 
-            // put json to s3
+            // save json
             var storage = StorageFactory.Create(_logger);
             await storage.Save(_path, $"reports/{reporter.ReportId}", reporter.GetJsonFileName(), benchJson, ct: _cancellationToken);
         }
@@ -439,7 +429,12 @@ namespace Benchmark.ClientLib
             {
                 // default HTTP/2 MutipleConnections = 100, true enable additional HTTP/2 connection via channel.
                 // memo: create Channel Pool and random get pool for each connection to avoid too match channel connection.
-                EnableMultipleHttp2Connections = true,
+                EnableMultipleHttp2Connections = false,
+                // Enable KeepAlive to keep HTTP/2 while non-active status.
+                PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+                KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                ConnectTimeout = TimeSpan.FromSeconds(10),
             };
             if (Config.UseSelfCertEndpoint)
             {
@@ -454,6 +449,8 @@ namespace Benchmark.ClientLib
             return GrpcChannel.ForAddress(hostAddress, new GrpcChannelOptions
             {
                 HttpHandler = handler,
+                MaxReceiveMessageSize = int.MaxValue,
+                MaxSendMessageSize = int.MaxValue,
             });
         }
 

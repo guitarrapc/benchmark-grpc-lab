@@ -30,22 +30,39 @@ namespace Benchmark.ClientLib.Scenarios
 
         public async Task Run(int requestCount, CancellationToken ct)
         {
-            using (var statistics = new Statistics(nameof(PlainTextAsync)))
+            using (var statistics = new Statistics(nameof(PlainTextAsync) + requestCount))
             {
-                await PlainTextAsync(requestCount, ct);
-
-                _reporter.AddBenchDetail(new BenchReportItem
+                if (_config.ClientConcurrency == 1)
                 {
-                    ExecuteId = _reporter.ExecuteId,
-                    ClientId = _reporter.ClientId,
-                    TestName = nameof(PlainTextAsync),
-                    Begin = statistics.Begin,
-                    End = DateTime.UtcNow,
-                    Duration = statistics.Elapsed,
-                    RequestCount = requestCount,
-                    Type = nameof(Grpc.Core.MethodType.Unary),
-                    Errors = _errors.Count,
-                });
+                    await PlainTextAsync(requestCount, ct, () => _reporter.AddBenchDetail(new BenchReportItem
+                    {
+                        ExecuteId = _reporter.ExecuteId,
+                        ClientId = _reporter.ClientId,
+                        TestName = nameof(PlainTextAsync),
+                        Begin = statistics.Begin,
+                        End = DateTime.UtcNow,
+                        Duration = statistics.Elapsed,
+                        RequestCount = requestCount,
+                        Type = nameof(Grpc.Core.MethodType.Unary),
+                        Errors = _errors.Count,
+                    }));
+                }
+                else
+                {
+                    await PlainTextConcurrentAsync(requestCount, ct, () => _reporter.AddBenchDetail(new BenchReportItem
+                    {
+                        ExecuteId = _reporter.ExecuteId,
+                        ClientId = _reporter.ClientId,
+                        TestName = nameof(PlainTextAsync),
+                        Begin = statistics.Begin,
+                        End = DateTime.UtcNow,
+                        Duration = statistics.Elapsed,
+                        RequestCount = 1, // concurrent will run single request
+                        Type = nameof(Grpc.Core.MethodType.Unary),
+                        Errors = _errors.Count,
+                    }));
+                }
+                
                 statistics.HasError(_errors.Count);
             }
         }
@@ -69,7 +86,7 @@ namespace Benchmark.ClientLib.Scenarios
             await ValueTaskUtils.WhenAll(tasks);
         }
 
-        private async Task PlainTextAsync(int requestCount, CancellationToken ct)
+        private async Task PlainTextAsync(int requestCount, CancellationToken ct, Action reportAction)
         {
             var data = new BenchmarkData
             {
@@ -85,6 +102,7 @@ namespace Benchmark.ClientLib.Scenarios
                 {
                     _errors.TryAdd(ex.GetType().FullName, ex);
                 }
+                reportAction.Invoke();
             }
         }
 
@@ -94,27 +112,42 @@ namespace Benchmark.ClientLib.Scenarios
         /// <param name="requestCount"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        private async Task PlainTextConcurrentAsync(int requestCount, CancellationToken ct)
+        private async Task PlainTextConcurrentAsync(int requestCount, CancellationToken ct, Action reportAction)
         {
             var data = new BenchmarkData
             {
                 PlainText = _config.GetRequestPayload(),
             };
-
-            using var pool = new UnaryResultPool<Nil>(_config.ClientConcurrency, ct);
-            for (var i = 0; i < requestCount; i++)
+            void Run(UnaryResultWorkerPool<Nil> pool, BenchmarkData data)
             {
                 try
                 {
-                    pool.RegisterAsync(() => _client.PlainTextAsync(data)).FireAndForget();
+                    pool.RunWorkers(id => _client.PlainTextAsync(data));
                 }
                 catch (Exception ex)
                 {
                     _errors.TryAdd(ex.GetType().FullName, ex);
                 }
+                reportAction.Invoke();
             }
-            await pool.WaitForCompleteAsync();
-            await Task.WhenAny(pool.Completed, pool.WaitForTimeout());
+
+            var duration = _config.GetDuration();
+            if (duration != TimeSpan.Zero)
+            {
+                using var cts = new CancellationTokenSource(duration);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
+                var linkedCt = linkedCts.Token;
+
+                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, linkedCt);
+                Run(pool, data);
+                await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
+            }
+            else
+            {
+                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, ct);
+                Run(pool, data);
+                await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
+            }
         }
 
         private async Task PlainTextAsyncParallel(int requestCount, CancellationToken ct)

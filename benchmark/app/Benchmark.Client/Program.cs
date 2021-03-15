@@ -1,4 +1,5 @@
 using Benchmark.ClientLib;
+using Benchmark.ClientLib.Utils;
 using ConsoleAppFramework;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using ZLogger;
+
+
+ThreadPools.ModifyThreadPool(Environment.ProcessorCount * 8, Environment.ProcessorCount * 8);
 
 var builder = Host.CreateDefaultBuilder()
     .ConfigureLogging((hostContext, logging) =>
@@ -21,6 +25,10 @@ if (Environment.GetEnvironmentVariable("BENCHCLIENT_RUNASWEB") == "true")
 }
 else
 {
+    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BENCHCLIENT_DELAY")))
+    {
+        await Task.Delay(TimeSpan.FromSeconds(3));
+    }
     await builder.RunConsoleAppFrameworkAsync(args);
 }
 
@@ -40,13 +48,15 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="hostAddress"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "200", string duration = "0", int concurrency = 1, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
         {
             Config = new BenchmarkerConfig
             {
+                ClientConcurrency = concurrency,
+                Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
             }
@@ -100,13 +110,16 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="hostAddress"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "200", string duration = "0", int concurrency = 1, int connections = 1, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
         {
             Config = new BenchmarkerConfig
             {
+                ClientConcurrency = concurrency,
+                ClientConnections = connections,
+                Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
             }

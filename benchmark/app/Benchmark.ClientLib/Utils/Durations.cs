@@ -46,6 +46,8 @@ namespace Benchmark.ClientLib.Utils
             return text;
         }
 
+        public static void Validate(string text) => FromString(text);
+
         private static (string leastText, int number) ExtractNumber(string text, char charactor)
         {
             if (string.IsNullOrEmpty(text))

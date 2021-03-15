@@ -24,6 +24,11 @@ namespace ConsoleAppEcs
 
             var reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            if (Environment.GetEnvironmentVariable("IS_LOCAL")?.ToLower() == "true")
+            {
+                reportId = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                System.IO.File.WriteAllText("current_report_id", reportId);
+            }
             Console.WriteLine($"bucket {path}, reportId {reportId}");
 
             if (args.Length == 0)
@@ -35,7 +40,10 @@ namespace ConsoleAppEcs
                 //args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 150 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 20 -workerPerProcess 10 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
 
-                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
+                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName GrpcWorker".Split(' ');
+
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName HubWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName GrpcWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName ApiWorker".Split(' ');
@@ -64,28 +72,28 @@ namespace ConsoleAppEcs
                         options.EnableStructuredLogging = false;
                     });
                 })
-                .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
+                //.RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new EcsScalingProvider())
+                //{
+                //    Timeout = TimeSpan.FromMinutes(120),
+                //    OnExecuteResult = (results, option, scenario) =>
+                //    {
+                //        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+                //        Console.WriteLine("Generating html.");
+                //        var benchmarker = new Benchmarker(path, null, cts.Token);
+                //        benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
+                //    },
+                //});
+                .RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())
                 {
                     Timeout = TimeSpan.FromMinutes(120),
-                    OnExecuteResult = (results, option, scenario) =>
+                    OnExecuteResult = async (results, option, scenario) =>
                     {
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
                         Console.WriteLine("Generating html.");
                         var benchmarker = new Benchmarker(path, null, cts.Token);
-                        benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
+                        await benchmarker.GenerateHtml(reportId, generateDetail: false);
                     },
                 });
-                //.RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())
-                // {
-                //     Timeout = TimeSpan.FromMinutes(120),
-                //     OnExecuteResult = async (results, option, scenario) =>
-                //     {
-                //         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
-                //         Console.WriteLine("Generating html.");
-                //         var benchmarker = new Benchmarker(path, null, cts.Token);
-                //         await benchmarker.GenerateHtml(reportId, generateDetail: false);
-                //     },
-                // });
         }
 
         private static void ModifyThreadPool(int workerThread, int completionPortThread)
@@ -123,14 +131,16 @@ namespace ConsoleAppEcs
         {
             Console.WriteLine("Setup");
             _cts = new CancellationTokenSource();
-            _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
-            _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
-            var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            //_hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
+            //_reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
+            //var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
 
             // non ssl localhost
-            //_hostAddress = "http://localhost:5000";
-            //_reportId = "abc-123";
-            //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
+            _hostAddress = "http://localhost:5000";
+            _reportId = System.IO.File.ReadAllText("current_report_id");
+            var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
+            var duration = "30s";
+            var concurrency = "50";
 
             // ssl localhost
             //_hostAddress = "https://localhost:5001";
@@ -138,15 +148,18 @@ namespace ConsoleAppEcs
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
             // var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
-            var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            //var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
                 Config = new BenchmarkerConfig
                 {
+                    Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                    ClientConcurrency = int.Parse(concurrency),
                 }
             };
         }
@@ -241,30 +254,37 @@ namespace ConsoleAppEcs
         {
             Console.WriteLine("Setup");
             _cts = new CancellationTokenSource();
-            _hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
-            _reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
-            var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            //_hostAddress = Environment.GetEnvironmentVariable("BENCH_SERVER_HOST") ?? throw new ArgumentNullException($"Environment variables BENCH_SERVER_HOST is missing.");
+            //_reportId = Environment.GetEnvironmentVariable("BENCH_REPORTID") ?? throw new ArgumentNullException($"Environment variables BENCH_REPORTID is missing.");
+            //var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
+            //var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "0";
+            //var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "1";
 
             // non ssl localhost
-            //_hostAddress = "http://localhost:5000";
-            //_reportId = "abc-123";
-            //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
+            _hostAddress = "http://localhost:5000";
+            _reportId = System.IO.File.ReadAllText("current_report_id");
+            var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
+            var duration = "30s";
+            var concurrency = "50";
 
             // ssl localhost
             //_hostAddress = "https://localhost:5001";
-            //_reportId = "abc-123";
+            //_reportId = System.IO.File.ReadAllText("current_report_id");
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
             //var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
-            var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            //var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, null, _cts.Token)
             {
                 Config = new BenchmarkerConfig
                 {
+                    Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                    ClientConcurrency = int.Parse(concurrency),
                 }
             };
         }

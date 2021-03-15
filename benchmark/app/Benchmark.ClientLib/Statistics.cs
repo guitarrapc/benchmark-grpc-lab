@@ -47,7 +47,7 @@ namespace Benchmark.ClientLib
             Duration = Elapsed;
             _stopwatch.Stop();
 
-            Console.WriteLine($" * Elapsed({Name}): {Duration.TotalMilliseconds}ms {(_hasError ? "(!)" : "")}");
+            Console.WriteLine($" * Elapsed({Name}): {Duration.TotalSeconds}sec {(_hasError ? "(!)" : "")}");
         }
     }
 }
