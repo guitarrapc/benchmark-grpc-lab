@@ -37,29 +37,7 @@ namespace Benchmark.ClientLib.Scenarios
                 results = await PlainTextAsync(requestCount, ct);
             }
 
-            var sortedResults = results.Select(x => x.Duration).OrderBy(x => x).ToArray();
-            var fastest = sortedResults[0];
-            var slowest = sortedResults[^1];
-            _reporter.AddDetail(new BenchReportItem
-            {
-                ExecuteId = _reporter.ExecuteId,
-                ClientId = _reporter.ClientId,
-                TestName = nameof(PlainTextAsync),
-                Begin = statistics.Begin,
-                End = DateTime.UtcNow,
-                Duration = statistics.Elapsed,
-                RequestCount = results.Length,
-                Type = nameof(MethodType.Unary),
-                Average = results.Select(x => x.Duration).Average(),
-                Fastest = fastest,
-                Slowest = slowest,
-                Rps = results.Length / statistics.Elapsed.TotalSeconds,
-                Errors = results.Where(x => x.Error != null).Count(),
-                StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
-                ErrorCodeDistribution = ErrorCodeDistribution.FromCallResults(results),
-                Latencies = LatencyDistribution.Calculate(sortedResults),
-                Histogram = HistogramBucket.Calculate(sortedResults, slowest.TotalMilliseconds, fastest.TotalMilliseconds),
-            });
+            _reporter.AddDetail(nameof(PlainTextAsync), nameof(MethodType.Unary), _reporter, statistics, results);
         }
 
         private async Task<CallResult[]> PlainTextAsync(int requestCount, CancellationToken ct)

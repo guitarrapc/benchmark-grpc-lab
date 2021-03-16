@@ -137,7 +137,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -201,7 +201,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // non ssl localhost
             //_hostAddress = "http://localhost";
@@ -265,7 +265,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -329,7 +329,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -394,7 +394,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -460,7 +460,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
-            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "20";
 
             // must add port like server.local:80
             if (_hostAddress.StartsWith("http://"))

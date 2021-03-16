@@ -77,25 +77,66 @@ namespace Benchmark.ClientLib.Reports
             return _report;
         }
 
+        /// <summary>
+        /// Begin Reporter
+        /// </summary>
         public void Begin()
         {
             _report.Begin = DateTime.UtcNow;
         }
 
+        /// <summary>
+        /// End Reporter and Finalize
+        /// </summary>
         public void End()
         {
             _report.End = DateTime.UtcNow;
             _report.Duration = _report.End - _report.Begin;
+            _report.Items = _items.ToArray();
         }
 
         /// <summary>
-        /// Add inidivisual Detail Report
+        /// Add Detail Report
         /// </summary>
         /// <param name="item"></param>
         public void AddDetail(BenchReportItem item)
         {
             _items.Add(item);
-            _report.Items = _items.ToArray();
+        }
+        /// <summary>
+        /// Add Detail Report
+        /// </summary>
+        /// <param name="testName"></param>
+        /// <param name="testType"></param>
+        /// <param name="reporter"></param>
+        /// <param name="statistics"></param>
+        /// <param name="results"></param>
+        public void AddDetail(string testName, string testType, BenchReporter reporter, Statistics statistics, CallResult[] results)
+        {
+            var sortedResults = results.Select(x => x.Duration).OrderBy(x => x).ToArray();
+            var fastest = sortedResults[0];
+            var slowest = sortedResults[^1];
+            var item = new BenchReportItem
+            {
+                ExecuteId = reporter.ExecuteId,
+                ClientId = reporter.ClientId,
+                TestName = testName,
+                Begin = statistics.Begin,
+                End = DateTime.UtcNow,
+                Duration = statistics.Elapsed,
+                RequestCount = results.Length,
+                Type = testType,
+                Average = results.Select(x => x.Duration).Average(),
+                Fastest = fastest,
+                Slowest = slowest,
+                Rps = results.Length / statistics.Elapsed.TotalSeconds,
+                Errors = results.Where(x => x.Error != null).Count(),
+                StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
+                ErrorCodeDistribution = ErrorCodeDistribution.FromCallResults(results),
+                Latencies = LatencyDistribution.Calculate(sortedResults),
+                Histogram = HistogramBucket.Calculate(sortedResults, slowest.TotalMilliseconds, fastest.TotalMilliseconds),
+            };
+            _items.Add(item);
         }
 
         /// <summary>

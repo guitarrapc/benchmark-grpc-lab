@@ -35,29 +35,7 @@ namespace Benchmark.ClientLib.Scenarios
                 results = await ProcessAsync(requestCount, waitMilliseonds, ct);
             }
 
-            var sortedResults = results.Select(x => x.Duration).OrderBy(x => x).ToArray();
-            var fastest = sortedResults[0];
-            var slowest = sortedResults[^1];
-            _reporter.AddDetail(new BenchReportItem
-            {
-                ExecuteId = _reporter.ExecuteId,
-                ClientId = _reporter.ClientId,
-                TestName = nameof(ProcessAsync),
-                Begin = statistics.Begin,
-                End = DateTime.UtcNow,
-                Duration = statistics.Elapsed,
-                RequestCount = results.Length,
-                Type = nameof(MethodType.DuplexStreaming),
-                Average = results.Select(x => x.Duration).Average(),
-                Fastest = fastest,
-                Slowest = slowest,
-                Rps = results.Length / statistics.Elapsed.TotalSeconds,
-                Errors = results.Where(x => x.Error != null).Count(),
-                StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
-                ErrorCodeDistribution = ErrorCodeDistribution.FromCallResults(results),
-                Latencies = LatencyDistribution.Calculate(sortedResults),
-                Histogram = HistogramBucket.Calculate(sortedResults, slowest.TotalMilliseconds, fastest.TotalMilliseconds),
-            });
+            _reporter.AddDetail(nameof(ProcessAsync), nameof(MethodType.DuplexStreaming), _reporter, statistics, results);
         }
 
         private async Task<CallResult[]> ProcessAsync(int requestCount, int waitMilliseonds, CancellationToken ct)
