@@ -402,6 +402,7 @@ namespace ConsoleAppEcs
                 {
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
+                    ClientConcurrency = iterations[0],
                 }
             };
         }
@@ -409,7 +410,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchLongRunHub(_waitMilliseconds, parallel: false, _hostAddress, _reportId);
+                await _benchmarker.BenchLongRunHub(_waitMilliseconds, _hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -458,7 +459,7 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
-            var iterations = new[] { 1 };
+            var iterations = new[] { 1000 };
             _waitMilliseconds = 240_000; // 1000 = 1sec
             _isHttps = _hostAddress.StartsWith("https://");
 
@@ -469,6 +470,7 @@ namespace ConsoleAppEcs
                 {
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _isHttps,
+                    ClientConcurrency = iterations[0],
                 }
             };
         }
@@ -476,7 +478,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchCCoreLongRunHub(_waitMilliseconds, insecure: _isHttps, parallel: false, _hostAddress, _reportId);
+                await _benchmarker.BenchCCoreLongRunHub(_waitMilliseconds, insecure: _isHttps, _hostAddress, _reportId);
             }
             catch (Exception ex)
             {

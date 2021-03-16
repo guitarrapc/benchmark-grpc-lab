@@ -1,4 +1,3 @@
-using MagicOnion;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -7,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Runtime
 {
-    public class UnaryResultWorkerPool<T> : IDisposable
+    public class TaskWorkerPool<T> : IDisposable
     {
         private readonly int _workerCount;
         private readonly CancellationToken _ct;
@@ -16,9 +15,9 @@ namespace Benchmark.ClientLib.Runtime
         private int _completeCount;
         private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        private readonly Channel<Func<int, UnaryResult<T>>> _channel;
-        private readonly ChannelWriter<Func<int, UnaryResult<T>>> _writer;
-        private readonly ChannelReader<Func<int, UnaryResult<T>>> _reader;
+        private readonly Channel<Func<int, Task<T>>> _channel;
+        private readonly ChannelWriter<Func<int, Task<T>>> _writer;
+        private readonly ChannelReader<Func<int, Task<T>>> _reader;
 
         public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => false;
         public int CompleteCount => _completeCount;
@@ -26,16 +25,16 @@ namespace Benchmark.ClientLib.Runtime
         public bool Completed => _completeTask.Task.IsCompleted;
         public ConcurrentDictionary<string, Exception> Errors => _errors;
 
-        public UnaryResultWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
+        public TaskWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
         {
         }
 
-        public UnaryResultWorkerPool(int workerCount, int channelSize, CancellationToken ct)
+        public TaskWorkerPool(int workerCount, int channelSize, CancellationToken ct)
         {
             _workerCount = workerCount;
             _ct = ct;
             _ct.Register(() => _timeoutTcs.TrySetResult());
-            _channel = Channel.CreateBounded<Func<int, UnaryResult<T>>>(new BoundedChannelOptions(channelSize)
+            _channel = Channel.CreateBounded<Func<int, Task<T>>>(new BoundedChannelOptions(channelSize)
             {
                 SingleReader = false,
                 SingleWriter = true,
@@ -57,7 +56,7 @@ namespace Benchmark.ClientLib.Runtime
         /// <returns></returns>
         public Task WaitForTimeout() => _timeoutTcs.Task;
 
-        public void RunWorkers(Func<int, UnaryResult<T>> action)
+        public void RunWorkers(Func<int, Task<T>> action)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
@@ -72,7 +71,7 @@ namespace Benchmark.ClientLib.Runtime
         /// Main execution
         /// </summary>
         /// <returns></returns>
-        private void RunCore(Func<int, UnaryResult<T>> action)
+        private void RunCore(Func<int, Task<T>> action)
         {
             // write
             Task.Run(async () =>
@@ -92,7 +91,7 @@ namespace Benchmark.ClientLib.Runtime
                     }
                     catch (OperationCanceledException)
                     {
-                        // canceled
+                        // canceld
                     }
                 }
             }, _ct);
@@ -113,7 +112,7 @@ namespace Benchmark.ClientLib.Runtime
                             if (_ct.IsCancellationRequested)
                                 return;
 
-                            await item.Invoke(id);
+                            await item.Invoke(id).ConfigureAwait(false);
                             //Console.WriteLine($"done {_completeCount} ({_reader.Count}, id {id})");
                         }
                         catch (ChannelClosedException)

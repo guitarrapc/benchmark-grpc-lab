@@ -3,7 +3,6 @@ using Benchmark.ClientLib.Runtime;
 using Benchmark.Server;
 using Grpc.Net.Client;
 using System;
-using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,7 +14,6 @@ namespace Benchmark.ClientLib.Scenarios
         private readonly Greeter.GreeterClient[] _clients;
         private readonly BenchReporter _reporter;
         private readonly BenchmarkerConfig _config;
-        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
         public GrpcBenchmarkScenario(GrpcChannel[] channels, BenchReporter reporter, BenchmarkerConfig config)
         {
@@ -28,82 +26,38 @@ namespace Benchmark.ClientLib.Scenarios
 
         public async Task Run(int requestCount, CancellationToken ct)
         {
-            using (var statistics = new Statistics(nameof(SayHelloAsync) + requestCount))
+            using (var statistics = new Statistics(nameof(GrpcBenchmarkScenario) + requestCount))
             {
-                if (_config.ClientConcurrency == 1)
+                await SayHelloAsync(requestCount, ct, (completeCount, errorCount) =>
                 {
-                    await SayHelloAsync(requestCount, ct, () => _reporter.AddBenchDetail(new BenchReportItem
+                    _reporter.AddBenchDetail(new BenchReportItem
                     {
                         ExecuteId = _reporter.ExecuteId,
                         ClientId = _reporter.ClientId,
-                        TestName = nameof(SayHelloAsync),
-                        Begin = statistics.Begin,
-                        End = DateTime.UtcNow,
-                        Duration = statistics.Elapsed,
-                        RequestCount = requestCount,
-                        Type = nameof(Grpc.Core.MethodType.Unary),
-                        Errors = _errors.Count,
-                    }));
-                    statistics.HasError(_errors.Count);
-                }
-                else
-                {
-                    await SayHelloConcurrentAsync(requestCount, ct, completeCount => _reporter.AddBenchDetail(new BenchReportItem
-                    {
-                        ExecuteId = _reporter.ExecuteId,
-                        ClientId = _reporter.ClientId,
-                        TestName = nameof(SayHelloAsync),
+                        TestName = nameof(GrpcBenchmarkScenario),
                         Begin = statistics.Begin,
                         End = DateTime.UtcNow,
                         Duration = statistics.Elapsed,
                         RequestCount = completeCount, // concurrent will run single request
                         Type = nameof(Grpc.Core.MethodType.Unary),
-                        Errors = _errors.Count,
-                    }));
-                }
-
-                statistics.HasError(_errors.Count);
+                        Errors = errorCount,
+                    });
+                    statistics.HasError(errorCount != 0);
+                });
             }
-        }
-
-        private async Task SayHelloAsync(int requestCount, CancellationToken ct, Action reportAction)
-        {
-            var data = new HelloRequest { Name = _config.GetRequestPayload() };
-            for (var i = 0; i <= requestCount; i++)
-            {
-                try
-                {
-                    var client = GetClient(i);
-                    await client.SayHelloAsync(data, cancellationToken: ct);
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-            }
-            reportAction.Invoke();
         }
 
         /// <summary>
-        /// Run until timeout happen.
+        /// Concurrent Run
         /// </summary>
         /// <param name="requestCount"></param>
         /// <param name="ct"></param>
+        /// <param name="reportAction"></param>
         /// <returns></returns>
-        private async Task SayHelloConcurrentAsync(int requestCount, CancellationToken ct, Action<int> reportAction)
+        private async Task SayHelloAsync(int requestCount, CancellationToken ct, Action<int, int> reportAction)
         {
             var data = new HelloRequest { Name = _config.GetRequestPayload() };
-            void Run(AsyncUnaryCallWorkerPool<HelloReply> pool, HelloRequest data, CancellationToken ct)
-            {
-                try
-                {
-                    pool.RunWorkers(id => GetClient(id).SayHelloAsync(data, cancellationToken: ct));
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-            }
+            void Run(AsyncUnaryCallWorkerPool<HelloReply> pool, HelloRequest data, CancellationToken ct) => pool.RunWorkers(id => GetClient(id).SayHelloAsync(data, cancellationToken: ct));
 
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)
@@ -116,7 +70,7 @@ namespace Benchmark.ClientLib.Scenarios
                 using var pool = new AsyncUnaryCallWorkerPool<HelloReply>(_config.ClientConcurrency, linkedCt);
                 Run(pool, data, linkedCt);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction(pool.CompleteCount);
+                reportAction(pool.CompleteCount, pool.Errors.Count);
             }
             else
             {
@@ -127,7 +81,7 @@ namespace Benchmark.ClientLib.Scenarios
                 };
                 Run(pool, data, ct);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction(pool.CompleteCount);
+                reportAction(pool.CompleteCount, pool.Errors.Count);
             }
         }
     }

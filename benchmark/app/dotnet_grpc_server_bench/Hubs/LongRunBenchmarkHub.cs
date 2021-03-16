@@ -8,7 +8,6 @@ namespace Benchmark.Server.Hubs
 {
     public partial class LongRunBenchmarkHub : StreamingHubBase<ILongRunBenchmarkHub, ILongRunBenchmarkHubReciever>, ILongRunBenchmarkHub
     {
-        private IGroup room;
         private readonly ILogger<ILongRunBenchmarkHub> _logger;
 
         public LongRunBenchmarkHub(ILogger<LongRunBenchmarkHub> logger)
@@ -16,19 +15,9 @@ namespace Benchmark.Server.Hubs
             _logger = logger;
         }
 
-        public async Task Ready(string groupName, string name)
-        {
-            (room, _) = await Group.AddAsync(groupName, name);
-        }
-
         public async Task Process(LongRunBenchmarkData data)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(data.WaitMilliseconds));
-        }
-
-        public async Task End()
-        {
-            await room.RemoveAsync(Context);
         }
 
         protected override ValueTask OnConnecting()

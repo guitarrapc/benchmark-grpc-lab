@@ -46,9 +46,13 @@ public class BenchmarkRunner : ConsoleAppBase
     /// Run Unary Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
+    /// <param name="iterations"></param>
+    /// <param name="duration"></param>
+    /// <param name="concurrency"></param>
+    /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "200", string duration = "0", int concurrency = 1, string reportId = "")
+    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -56,6 +60,7 @@ public class BenchmarkRunner : ConsoleAppBase
             Config = new BenchmarkerConfig
             {
                 ClientConcurrency = concurrency,
+                ClientConnections = connections,
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
@@ -68,15 +73,22 @@ public class BenchmarkRunner : ConsoleAppBase
     /// Run Hub Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
+    /// <param name="iterations"></param>
+    /// <param name="duration"></param>
+    /// <param name="concurrency"></param>
+    /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchHub(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    public async Task BenchHub(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
         {
             Config = new BenchmarkerConfig
             {
+                ClientConcurrency = concurrency,
+                ClientConnections = connections,
+                Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
             }
@@ -85,32 +97,44 @@ public class BenchmarkRunner : ConsoleAppBase
     }
 
     /// <summary>
-    /// Run Hub Benchmark
+    /// Run Long running Hub Benchmark
     /// </summary>
+    /// <param name="waitMilliseconds"></param>
     /// <param name="hostAddress"></param>
+    /// <param name="iterations"></param>
+    /// <param name="duration"></param>
+    /// <param name="concurrency"></param>
+    /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
         {
             Config = new BenchmarkerConfig
             {
+                ClientConcurrency = concurrency,
+                ClientConnections = connections,
+                Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
             }
         };
-        await benchmarker.BenchLongRunHub(waitMilliseconds, true, hostAddress, reportId);
+        await benchmarker.BenchLongRunHub(waitMilliseconds, hostAddress, reportId);
     }
 
     /// <summary>
     /// Run Grpc Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
+    /// <param name="iterations"></param>
+    /// <param name="duration"></param>
+    /// <param name="concurrency"></param>
+    /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "200", string duration = "0", int concurrency = 1, int connections = 1, string reportId = "")
+    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -131,15 +155,22 @@ public class BenchmarkRunner : ConsoleAppBase
     /// Run REST Api Benchmark
     /// </summary>
     /// <param name="hostAddress"></param>
+    /// <param name="iterations"></param>
+    /// <param name="duration"></param>
+    /// <param name="concurrency"></param>
+    /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchApi(string hostAddress = "http://localhost:5000", string iterations = "256,1024,4096,16384", string reportId = "")
+    public async Task BenchApi(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
         {
             Config = new BenchmarkerConfig
             {
+                ClientConcurrency = concurrency,
+                ClientConnections = connections,
+                Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
             }

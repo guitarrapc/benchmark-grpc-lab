@@ -36,9 +36,9 @@ namespace Benchmark.ClientLib
             }
         }
 
-        public void HasError(int errors)
+        public void HasError(bool value)
         {
-            _hasError = errors != 0;
+            _hasError = value;
         }
 
         public void Dispose()

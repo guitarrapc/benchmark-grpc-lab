@@ -1,5 +1,6 @@
 using Grpc.Core;
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -13,15 +14,16 @@ namespace Benchmark.ClientLib.Runtime
         private readonly TaskCompletionSource _timeoutTcs = new TaskCompletionSource();
         private readonly TaskCompletionSource _completeTask = new TaskCompletionSource();
         private int _completeCount;
-
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
         private readonly Channel<Func<int, AsyncUnaryCall<T>>> _channel;
         private readonly ChannelWriter<Func<int, AsyncUnaryCall<T>>> _writer;
         private readonly ChannelReader<Func<int, AsyncUnaryCall<T>>> _reader;
 
-        public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => x.current == 0;
+        public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => false;
         public int CompleteCount => _completeCount;
         public bool Timeouted => _timeoutTcs.Task.IsCompleted;
         public bool Completed => _completeTask.Task.IsCompleted;
+        public ConcurrentDictionary<string, Exception> Errors => _errors;
 
         public AsyncUnaryCallWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
         {
@@ -83,13 +85,13 @@ namespace Benchmark.ClientLib.Runtime
 
                         await _writer.WriteAsync(action, _ct).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException)
-                    {
-                        Console.WriteLine("canceled");
-                    }
-                    catch (System.Threading.Channels.ChannelClosedException)
+                    catch (ChannelClosedException)
                     {
                         // already closed.
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // canceled
                     }
                 }
             }, _ct);
@@ -113,7 +115,7 @@ namespace Benchmark.ClientLib.Runtime
                             await item.Invoke(id);
                             //Console.WriteLine($"done {_completeCount} ({_reader.Count}, id {id})");
                         }
-                        catch (System.Threading.Channels.ChannelClosedException)
+                        catch (ChannelClosedException)
                         {
                             // already closed.
                         }
@@ -124,6 +126,7 @@ namespace Benchmark.ClientLib.Runtime
                         catch (Exception ex)
                         {
                             Console.Error.WriteLine($"exception {ex.Message} {ex.GetType().FullName} {ex.StackTrace}");
+                            _errors.TryAdd(ex.GetType().FullName, ex);
                         }
                         finally
                         {

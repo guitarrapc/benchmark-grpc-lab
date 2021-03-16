@@ -3,12 +3,10 @@ using Benchmark.ClientLib.Runtime;
 using Benchmark.Server.Shared;
 using Benchmark.Shared;
 using Grpc.Net.Client;
-using MagicOnion;
 using MagicOnion.Client;
 using MessagePack;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,124 +14,61 @@ namespace Benchmark.ClientLib.Scenarios
 {
     public class UnaryBenchmarkScenario
     {
-        private readonly IBenchmarkService _client;
+        private readonly IBenchmarkService[] _clients;
         private readonly BenchReporter _reporter;
         private readonly BenchmarkerConfig _config;
-        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        public UnaryBenchmarkScenario(GrpcChannel channel, BenchReporter reporter, BenchmarkerConfig config)
+        public UnaryBenchmarkScenario(GrpcChannel[] channels, BenchReporter reporter, BenchmarkerConfig config)
         {
-            _client = MagicOnionClient.Create<IBenchmarkService>(channel);
+            _clients = channels.Select(x => MagicOnionClient.Create<IBenchmarkService>(x)).ToArray();
             _reporter = reporter;
             _config = config;
         }
 
+        private IBenchmarkService GetClient(int n) => _clients[n % _clients.Length];
+
         public async Task Run(int requestCount, CancellationToken ct)
         {
-            using (var statistics = new Statistics(nameof(PlainTextAsync) + requestCount))
+            using (var statistics = new Statistics(nameof(UnaryBenchmarkScenario) + requestCount))
             {
-                if (_config.ClientConcurrency == 1)
+                await PlainTextAsync(requestCount, ct, (completeCount, errorCount) =>
                 {
-                    await PlainTextAsync(requestCount, ct, () => _reporter.AddBenchDetail(new BenchReportItem
+                    _reporter.AddBenchDetail(new BenchReportItem
                     {
                         ExecuteId = _reporter.ExecuteId,
                         ClientId = _reporter.ClientId,
-                        TestName = nameof(PlainTextAsync),
+                        TestName = nameof(UnaryBenchmarkScenario),
                         Begin = statistics.Begin,
                         End = DateTime.UtcNow,
                         Duration = statistics.Elapsed,
-                        RequestCount = requestCount,
+                        RequestCount = completeCount,
                         Type = nameof(Grpc.Core.MethodType.Unary),
-                        Errors = _errors.Count,
-                    }));
-                }
-                else
-                {
-                    await PlainTextConcurrentAsync(requestCount, ct, () => _reporter.AddBenchDetail(new BenchReportItem
-                    {
-                        ExecuteId = _reporter.ExecuteId,
-                        ClientId = _reporter.ClientId,
-                        TestName = nameof(PlainTextAsync),
-                        Begin = statistics.Begin,
-                        End = DateTime.UtcNow,
-                        Duration = statistics.Elapsed,
-                        RequestCount = 1, // concurrent will run single request
-                        Type = nameof(Grpc.Core.MethodType.Unary),
-                        Errors = _errors.Count,
-                    }));
-                }
-                
-                statistics.HasError(_errors.Count);
-            }
-        }
-
-        private async Task SumAsync(int requestCount)
-        {
-            var tasks = new List<UnaryResult<int>>();
-            for (var i = 0; i < requestCount; i++)
-            {
-                try
-                {
-                    // Call the server-side method using the proxy.
-                    var task = _client.SumAsync(i, i);
-                    tasks.Add(task);
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-            }
-            await ValueTaskUtils.WhenAll(tasks);
-        }
-
-        private async Task PlainTextAsync(int requestCount, CancellationToken ct, Action reportAction)
-        {
-            var data = new BenchmarkData
-            {
-                PlainText = _config.GetRequestPayload(),
-            };
-            for (var i = 0; i < requestCount; i++)
-            {
-                try
-                {
-                    await _client.PlainTextAsync(data);
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-                reportAction.Invoke();
+                        Errors = errorCount,
+                    });
+                    statistics.HasError(errorCount != 0);
+                });
             }
         }
 
         /// <summary>
-        /// Run until timeout happen.
+        /// Concurrent Run
         /// </summary>
         /// <param name="requestCount"></param>
         /// <param name="ct"></param>
+        /// <param name="reportAction"></param>
         /// <returns></returns>
-        private async Task PlainTextConcurrentAsync(int requestCount, CancellationToken ct, Action reportAction)
+        private async Task PlainTextAsync(int requestCount, CancellationToken ct, Action<int, int> reportAction)
         {
             var data = new BenchmarkData
             {
                 PlainText = _config.GetRequestPayload(),
             };
-            void Run(UnaryResultWorkerPool<Nil> pool, BenchmarkData data)
-            {
-                try
-                {
-                    pool.RunWorkers(id => _client.PlainTextAsync(data));
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-                reportAction.Invoke();
-            }
+            void Run(UnaryResultWorkerPool<Nil> pool, BenchmarkData data) => pool.RunWorkers(id => GetClient(id).PlainTextAsync(data));
 
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)
             {
+                // timeout base
                 using var cts = new CancellationTokenSource(duration);
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
                 var linkedCt = linkedCts.Token;
@@ -141,35 +76,19 @@ namespace Benchmark.ClientLib.Scenarios
                 using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, linkedCt);
                 Run(pool, data);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
+                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
             }
             else
             {
-                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, ct);
+                // request base
+                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, ct)
+                {
+                    CompleteCondition = x => x.completed >= requestCount,
+                };
                 Run(pool, data);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
+                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
             }
-        }
-
-        private async Task PlainTextAsyncParallel(int requestCount, CancellationToken ct)
-        {
-            var data = new BenchmarkData
-            {
-                PlainText = _config.GetRequestPayload(),
-            };
-            var tasks = new List<UnaryResult<Nil>>();
-            for (var i = 0; i < requestCount; i++)
-            {
-                try
-                {
-                    var task = _client.PlainTextAsync(data);
-                    tasks.Add(task);
-                }
-                catch (Exception ex)
-                {
-                    _errors.TryAdd(ex.GetType().FullName, ex);
-                }
-            }
-            await ValueTaskUtils.WhenAll(tasks);
         }
     }
 }

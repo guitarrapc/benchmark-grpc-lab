@@ -1,26 +1,29 @@
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Runtime
 {
-    public class TaskWorkerPool<T> : IDisposable
+    public class TaskWorkerPool : IDisposable
     {
         private readonly int _workerCount;
         private readonly CancellationToken _ct;
         private readonly TaskCompletionSource _timeoutTcs = new TaskCompletionSource();
         private readonly TaskCompletionSource _completeTask = new TaskCompletionSource();
         private int _completeCount;
+        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        private readonly Channel<Func<int, Task<T>>> _channel;
-        private readonly ChannelWriter<Func<int, Task<T>>> _writer;
-        private readonly ChannelReader<Func<int, Task<T>>> _reader;
+        private readonly Channel<Func<int, Task>> _channel;
+        private readonly ChannelWriter<Func<int, Task>> _writer;
+        private readonly ChannelReader<Func<int, Task>> _reader;
 
-        public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => x.current == 0;
+        public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => false;
         public int CompleteCount => _completeCount;
         public bool Timeouted => _timeoutTcs.Task.IsCompleted;
         public bool Completed => _completeTask.Task.IsCompleted;
+        public ConcurrentDictionary<string, Exception> Errors => _errors;
 
         public TaskWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
         {
@@ -31,7 +34,7 @@ namespace Benchmark.ClientLib.Runtime
             _workerCount = workerCount;
             _ct = ct;
             _ct.Register(() => _timeoutTcs.TrySetResult());
-            _channel = Channel.CreateBounded<Func<int, Task<T>>>(new BoundedChannelOptions(channelSize)
+            _channel = Channel.CreateBounded<Func<int, Task>>(new BoundedChannelOptions(channelSize)
             {
                 SingleReader = false,
                 SingleWriter = true,
@@ -53,7 +56,7 @@ namespace Benchmark.ClientLib.Runtime
         /// <returns></returns>
         public Task WaitForTimeout() => _timeoutTcs.Task;
 
-        public void RunWorkers(Func<int, Task<T>> action)
+        public void RunWorkers(Func<int, Task> action)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
@@ -68,7 +71,7 @@ namespace Benchmark.ClientLib.Runtime
         /// Main execution
         /// </summary>
         /// <returns></returns>
-        private void RunCore(Func<int, Task<T>> action)
+        private void RunCore(Func<int, Task> action)
         {
             // write
             Task.Run(async () =>
@@ -82,13 +85,13 @@ namespace Benchmark.ClientLib.Runtime
 
                         await _writer.WriteAsync(action, _ct).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException)
-                    {
-                        Console.WriteLine("canceled");
-                    }
-                    catch (System.Threading.Channels.ChannelClosedException)
+                    catch (ChannelClosedException)
                     {
                         // already closed.
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // canceled
                     }
                 }
             }, _ct);
@@ -112,7 +115,7 @@ namespace Benchmark.ClientLib.Runtime
                             await item.Invoke(id).ConfigureAwait(false);
                             //Console.WriteLine($"done {_completeCount} ({_reader.Count}, id {id})");
                         }
-                        catch (System.Threading.Channels.ChannelClosedException)
+                        catch (ChannelClosedException)
                         {
                             // already closed.
                         }
@@ -123,6 +126,7 @@ namespace Benchmark.ClientLib.Runtime
                         catch (Exception ex)
                         {
                             Console.Error.WriteLine($"exception {ex.Message} {ex.GetType().FullName} {ex.StackTrace}");
+                            _errors.TryAdd(ex.GetType().FullName, ex);
                         }
                         finally
                         {
