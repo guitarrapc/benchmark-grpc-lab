@@ -3,12 +3,12 @@ using System.Collections.Generic;
 
 namespace Benchmark.ClientLib.Reports
 {
-    public record HtmlBenchReport(
-        HtmlBenchReportClientInfo Client, 
-        HtmlBenchReportSummary Summary,
-        HtmlBenchConfigData Config,
-        HtmlBenchReportRequestResult[] RequestResults);
-    public record HtmlBenchReportClientInfo
+    public record HtmlReport(
+        HtmlReportClient Client, 
+        HtmlReportSummary Summary,
+        HtmlReportConfig Config,
+        HtmlReportRequest[] Requests);
+    public record HtmlReportClient
     {
         public string Os { get; init; }
         public string Architecture { get; init; }
@@ -17,7 +17,7 @@ namespace Benchmark.ClientLib.Reports
         public string Framework { get; init; }
         public string Version { get; init; }
     }
-    public record HtmlBenchReportSummary
+    public record HtmlReportSummary
     {
         public string ScenarioName { get; init; }
         public string ReportId { get; init; }
@@ -33,33 +33,27 @@ namespace Benchmark.ClientLib.Reports
         public TimeSpan Fastest { get; init; }
         public TimeSpan Slowest { get; init; }
     }
-    public record HtmlBenchConfigData
-    {
-        public int ClientConcurrency { get; init; }
-        public int ClientConnections { get; init; }
-    }
-    // request base
-    public record HtmlBenchReportRequestResult
+    public record HtmlReportConfig(int ClientConcurrency, int ClientConnections);
+
+    public record HtmlReportRequest
     {
         public string Key { get; init; }
-        public HtmlBenchReportRequestResultSummaryItem[] SummaryItems { get; init; }
-        public HtmlBenchReportRequestResultClientDurationItems[] ClientDurationItems { get; init; }
+        public HtmlReportRequestSummary[] Summaries { get; init; }
+        public HtmlReportRequestDuration[] Durations { get; init; }
+        public HtmlReportRequestLatency[] Latencies { get; set; }
     }
-    public record HtmlBenchReportRequestResultSummaryItem
+    public record HtmlReportRequestSummary
     {
         public int RequestCount { get; init; }
         public TimeSpan Duration { get; init; }
         public double Rps { get; init; }
         public int Errors { get; init; }
     }
-
-    public record HtmlBenchReportRequestResultClientDurationItems(
-        string Client,
-        HtmlBenchReportRequestResultClientDurationItem[] Items);
-    
-    public record HtmlBenchReportRequestResultClientDurationItem
+    public record HtmlReportRequestDuration(string Client, HtmlReportRequestDurationItem[] Items);    
+    public record HtmlReportRequestDurationItem
     {
         public int RequestCount { get; init; }
-        public HtmlBenchReportRequestResultSummaryItem[] SummaryItems { get; init; }
+        public HtmlReportRequestSummary[] Summaries { get; init; }
     }
+    public record HtmlReportRequestLatency(int Percentile, TimeSpan Duration);
 }

@@ -10,7 +10,7 @@ namespace Benchmark.ClientLib
 {
     public partial class BenchmarkReportPageTemplate
     {
-        public HtmlBenchReport Report { get; init; }
+        public HtmlReport Report { get; init; }
 
         private static readonly string[] colorPatterns = new[]
         {

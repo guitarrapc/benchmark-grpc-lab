@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace Benchmark.ClientLib.Reports
 {
-    public class BenchReport
+    public record BenchReport
     {
         [JsonPropertyName("report_id")]
         public string ReportId { get; set; }
@@ -49,7 +49,7 @@ namespace Benchmark.ClientLib.Reports
         public BenchReportItem[] Items { get; set; }
     }
 
-    public class BenchReportItem
+    public record BenchReportItem
     {
         [JsonPropertyName("execute_id")]
         public string ExecuteId { get; set; }
@@ -79,6 +79,8 @@ namespace Benchmark.ClientLib.Reports
         public int Errors { get; set; }
         [JsonPropertyName("statuscode_distribution")]
         public StatusCodeDistribution[] StatusCodeDistributions { get; set; }
+        [JsonPropertyName("latencies")]
+        public LatencyDistribution[] Latencies { get; set; }
     }
 
     public struct StatusCodeDistribution
@@ -109,4 +111,52 @@ namespace Benchmark.ClientLib.Reports
         public DateTime TimeStamp { get; set; }
     }
 
+    public struct LatencyDistribution
+    {
+        private static readonly int[] percentiles = new int[] { 10, 25, 50, 75, 90, 95, 99 };
+
+        public int Percentile { get; set; }
+        public TimeSpan Latency { get; set; }
+
+        public static LatencyDistribution[] Calculate(TimeSpan[] latencies)
+        {
+            var data = new double[percentiles.Length];
+            var length = latencies.Length;
+
+            // get percentile latency value
+            for (var i = 0; i < percentiles.Length; i++)
+            {
+                var percentile = percentiles[i];
+                var ip = (percentile / 100.0) * length;
+                var di = (int)ip;
+
+                // since we're dealing with 0th based ranks we need to
+                // check if ordinal is a whole number that lands on the percentile
+                // if so adjust accordingly
+                if (ip == (double)di)
+                    di = di - 1;
+
+                if (di < 0)
+                {
+                    di = 0;
+                }
+                data[i] = latencies[di].TotalMilliseconds;
+            }
+
+            var res = new LatencyDistribution[percentiles.Length];
+            for (var i = 0; i < percentiles.Length; i++)
+            {
+                if (data[i] > 0)
+                {
+                    res[i] = new LatencyDistribution
+                    {
+                        Percentile = percentiles[i],
+                        Latency = TimeSpan.FromMilliseconds(data[i]),
+                    };
+                }
+            }
+            return res;
+        }
+
+    }
 }

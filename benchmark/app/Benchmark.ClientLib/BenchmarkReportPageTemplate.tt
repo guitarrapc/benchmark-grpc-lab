@@ -9,7 +9,7 @@
     var client = Report.Client;
     var config = Report.Config;
     var summary = Report.Summary;
-    var requestResults = Report.RequestResults;
+    var requests = Report.Requests;
 
     var lineColor = GetLineColor();
     var barColor = GetColor();
@@ -103,48 +103,92 @@
                     </table>
                 </div>
 
-                <# if (requestResults.Any()) {#>
-                <# foreach(var requestResult in requestResults) {#>
+                <# if (requests.Any()) {#>
+                <# foreach(var request in requests) {#>
                 <div class="table-responsive">
-                    <h2 class="text-muted"><#= requestResult.Key #> Summary</h2>
+                    <h2 class="text-muted"><#= request.Key #> Summary</h2>
                     <table class="table table-striped table-sm">
                         <thead>
                             <th scope="col">Requests</th>
-                        <# foreach(var item in requestResult.SummaryItems) { #>
+                        <# foreach(var item in request.Summaries) { #>
                             <th scope="col"><#= item.RequestCount #> req</th>
                         <# } #>
                         </thead>
                         <tr>
                             <td>Duration (Avg)</td>
-                        <# foreach(var item in requestResult.SummaryItems) { #>
+                        <# foreach(var item in request.Summaries) { #>
                             <td><#= string.Format("{0:f2}", item.Duration.TotalMilliseconds) #> ms</td>
                         <# } #>
                         </tr>
                         <tr>
                             <td>Rps</td>
-                        <# foreach(var item in requestResult.SummaryItems) { #>
+                        <# foreach(var item in request.Summaries) { #>
                             <td><#= string.Format("{0:f2}", item.Rps) #> rps</td>
                         <# } #>
                         </tr>
                         <tr>
                             <td>Errors</td>
-                        <# foreach(var item in requestResult.SummaryItems) { #>
+                        <# foreach(var item in request.Summaries) { #>
                             <td><#= item.Errors #></td>
                         <# } #>
                         </tr>
                         </tbody>
                     </table>
 
-                    <canvas id="<#= requestResult.Key #>RequestAvg"></canvas>
-                    <canvas id="<#= requestResult.Key #>RequestStackBar"></canvas>
+                    <canvas id="<#= request.Key #>LatencyDistribution"></canvas>
+                    <canvas id="<#= request.Key #>RequestAvg"></canvas>
+                    <canvas id="<#= request.Key #>RequestStackBar"></canvas>
 
                     <script>
-                        var ctx = document.getElementById("<#= requestResult.Key #>RequestAvg");
+                        var ctx = document.getElementById("<#= request.Key #>LatencyDistribution");
+                        var myChart = new Chart(ctx, {
+                            type: 'horizontalBar',
+                            data: {
+                                labels: [
+                                <# foreach(var item in request.Latencies) { #>
+                                    "<#= item.Percentile #>",
+                                <# } #>
+                                ],
+                                datasets: [
+                                {
+                                    label: "Latency(ms)",
+                                    backgroundColor: "<#= barColor #>",
+                                    borderColor: "<#= barColor #>",
+                                    data: [
+                                    <# foreach(var item in request.Latencies) { #>
+                                        <#= item.Duration.TotalMilliseconds #>,
+                                    <# } #>
+                                    ]
+                                },
+                                ]
+                            },
+                            options: {
+                                title: {
+                                    display: true,
+                                    text: 'Latency Distribution',
+                                    padding: 3
+                                },
+                                legend: {
+                                    labels: {
+                                        boxWidth: 30,
+                                        padding: 20
+                                    },
+                                    display: true
+                                },
+                                tooltips: {
+                                    mode: 'label' // data colum for tooltip
+                                },
+                                responsive: true
+                            }
+                        });
+                    </script>
+                    <script>
+                        var ctx = document.getElementById("<#= request.Key #>RequestAvg");
                         var myChart = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: [
-                                <# foreach(var item in requestResult.SummaryItems) { #>
+                                <# foreach(var item in request.Summaries) { #>
                                     "<#= item.RequestCount #>",
                                 <# } #>
                                 ],
@@ -155,7 +199,7 @@
                                     backgroundColor: "<#= barColor #>",
                                     borderColor: "<#= barColor #>",
                                     data: [
-                                    <# foreach(var item in requestResult.SummaryItems) { #>
+                                    <# foreach(var item in request.Summaries) { #>
                                         <#= item.Duration.TotalMilliseconds #>,
                                     <# } #>
                                     ]
@@ -168,7 +212,7 @@
                                     borderColor: "<#= lineColor #>",
                                     fill: false,
                                     data: [
-                                    <# foreach(var item in requestResult.SummaryItems) { #>
+                                    <# foreach(var item in request.Summaries) { #>
                                         <#= item.Rps #>,
                                     <# } #>
                                     ]
@@ -196,20 +240,20 @@
                         });
                     </script>
                     <script>
-                        var ctx = document.getElementById("<#= requestResult.Key #>RequestStackBar");
+                        var ctx = document.getElementById("<#= request.Key #>RequestStackBar");
                         var myChart = new Chart(ctx, {
                             type: 'bar',
                             data: {
                                 labels: [
-                                <# foreach(var item in requestResult.SummaryItems) { #>
+                                <# foreach(var item in request.Summaries) { #>
                                     "<#= item.RequestCount #>",
                                 <# } #>
                                 ],
                                 datasets: [
-                                <# for(var i = 0; i < requestResult.ClientDurationItems.Length; i++) { #>
+                                <# for(var i = 0; i < request.Durations.Length; i++) { #>
                                 {
                                     <#
-                                        var current = requestResult.ClientDurationItems[i];
+                                        var current = request.Durations[i];
                                         var items = current.Items;
                                         var color = GetColor(i);
                                     #>
@@ -220,7 +264,7 @@
                                     borderColor: "<#= color #>",
                                     data: [
                                     <# foreach(var summaries in items) { #>
-                                        <# foreach(var item in summaries.SummaryItems) { #>
+                                        <# foreach(var item in summaries.Summaries) { #>
                                             <#= item.Duration.TotalMilliseconds #>,
                                         <# } #>
                                     <# } #>

@@ -8,7 +8,7 @@ namespace Benchmark.ClientLib.Reports
 {
     public class HtmlBenchReporter
     {
-        public HtmlBenchReport CreateReport(BenchReport[] reports, bool generateDetail)
+        public HtmlReport CreateReport(BenchReport[] reports, bool generateDetail)
         {
             if (reports == null)
                 throw new ArgumentNullException(nameof(reports));
@@ -18,8 +18,9 @@ namespace Benchmark.ClientLib.Reports
             var requests = reports.SelectMany(xs => xs.Items.Select(x => x.RequestCount)).Sum();
             var begin = reports.Select(x => x.Begin).OrderBy(x => x).First();
             var end = reports.Select(x => x.End).OrderByDescending(x => x).First();
+            var scenarioName = reports.Select(x => x.ScenarioName).First();
 
-            var client = new HtmlBenchReportClientInfo
+            var client = new HtmlReportClient
             {
                 Os = ToJoinedString(reports.Select(x => x.OS).Distinct()),
                 Architecture = ToJoinedString(reports.Select(x => x.OS).Distinct()),
@@ -28,7 +29,7 @@ namespace Benchmark.ClientLib.Reports
                 Framework = ToJoinedString(reports.Select(x => x.Framework).Distinct()),
                 Version = ToJoinedString(reports.Select(x => x.Version).Distinct()),
             };
-            var summary = new HtmlBenchReportSummary
+            var summary = new HtmlReportSummary
             {
                 ScenarioName = reports.Select(x => x.ScenarioName).First(),
                 ReportId = reports.Select(x => x.ReportId).First(),
@@ -44,29 +45,29 @@ namespace Benchmark.ClientLib.Reports
                 Slowest = reports.SelectMany(xs => xs.Items.Select(x => x.Slowest)).Max(),
                 Fastest = reports.SelectMany(xs => xs.Items.Select(x => x.Fastest)).Min(),
             };
-            var config = new HtmlBenchConfigData
-            {
-                ClientConcurrency = reports.Select(x => x.Concurrency).First(),
-                ClientConnections = reports.Select(x => x.Connections).First(),
-            };
+            var config = new HtmlReportConfig(reports.Select(x => x.Concurrency).First(), reports.Select(x => x.Connections).First());
             var requestResults = reports.SelectMany(x => x.Items)
                 .GroupBy(x => x.Type + x.RequestCount)
-                .Select(unaryItems => new HtmlBenchReportRequestResult
+                .Select(x => new HtmlReportRequest
                 {
-                    Key = reports.Select(x => x.ScenarioName).First(),
-                    SummaryItems = GetRequestSummaryItems(unaryItems),
-                    ClientDurationItems = Array.Empty<HtmlBenchReportRequestResultClientDurationItems>(),
+                    Key = scenarioName,
+                    Summaries = GetRequestSummaryItems(x),
+                    Durations = Array.Empty<HtmlReportRequestDuration>(),
+                    Latencies = x.SelectMany(x => x.Latencies)
+                        .GroupBy(x => x.Percentile)
+                        .Select(x => new HtmlReportRequestLatency(x.Key, x.Select(x => x.Latency).Average()))
+                        .ToArray(),                        
                 })
                 .ToArray();
 
-            return new HtmlBenchReport(
+            return new HtmlReport(
                 client, 
                 summary,
                 config,
                 requestResults);
         }
 
-        private HtmlBenchReportRequestResultSummaryItem[] GetRequestSummaryItems(IEnumerable<BenchReportItem> sources)
+        private HtmlReportRequestSummary[] GetRequestSummaryItems(IEnumerable<BenchReportItem> sources)
         {
             // { connections int: duration TimeSpan}
             if (sources == null) throw new ArgumentNullException(nameof(sources));
@@ -74,7 +75,7 @@ namespace Benchmark.ClientLib.Reports
                 .Select(xs =>
                 {
                     var duration = xs.Select(x => x.Duration).Sum();
-                    return new HtmlBenchReportRequestResultSummaryItem
+                    return new HtmlReportRequestSummary
                     {
                         RequestCount = xs.Key,
                         Duration = xs.Select(x => x.Duration).Average(),

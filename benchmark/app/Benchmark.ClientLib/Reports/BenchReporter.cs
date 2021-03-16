@@ -178,6 +178,5 @@ namespace Benchmark.ClientLib.Reports
                 return description;
             }
         }
-
     }
 }
