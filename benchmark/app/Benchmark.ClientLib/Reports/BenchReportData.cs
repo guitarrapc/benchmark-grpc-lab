@@ -71,23 +71,28 @@ namespace Benchmark.ClientLib.Reports
         public TimeSpan Slowest { get; set; }
         [JsonPropertyName("fastest")]
         public TimeSpan Fastest { get; set; }
-        [JsonPropertyName("Average")]
+        [JsonPropertyName("average")]
         public TimeSpan Average { get; set; }
         [JsonPropertyName("request_per_sec")]
         public Double Rps { get; set; }
         [JsonPropertyName("error_count")]
         public int Errors { get; set; }
-        [JsonPropertyName("statuscode_distribution")]
+        [JsonPropertyName("statuscodes")]
         public StatusCodeDistribution[] StatusCodeDistributions { get; set; }
+        [JsonPropertyName("errorcodes")]
+        public ErrorCodeDistribution[] ErrorCodeDistribution { get; set; }
         [JsonPropertyName("latencies")]
         public LatencyDistribution[] Latencies { get; set; }
+        [JsonPropertyName("histogram")]
+        public HistogramBucket[] Histogram { get; set; }
     }
 
     public struct StatusCodeDistribution
     {
+        [JsonPropertyName("statuscode")]
         public string StatusCode { get; set; }
+        [JsonPropertyName("count")]
         public int Count { get; set; }
-        public string Detail { get; set; }
 
         public static StatusCodeDistribution[] FromCallResults(IEnumerable<CallResult> callResults)
         {
@@ -97,17 +102,45 @@ namespace Benchmark.ClientLib.Reports
                 {
                     Count = x.Count(),
                     StatusCode = x.Key.ToString(),
-                    Detail = x.Select(x => x.Detail).FirstOrDefault()
                 })
                 .ToArray();
         }
     }
 
+    public struct ErrorCodeDistribution
+    {
+        [JsonPropertyName("statuscode")]
+        public string StatusCode { get; set; }
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+        [JsonPropertyName("detail")]
+        public string Detail { get; set; }
+
+        public static ErrorCodeDistribution[] FromCallResults(IEnumerable<CallResult> callResults)
+        {
+            return callResults
+                .Where(x => x.Status.StatusCode != Grpc.Core.StatusCode.OK)
+                .GroupBy(x => x.Error?.Message)
+                .Select(x => new ErrorCodeDistribution
+                {
+                    Count = x.Count(),
+                    StatusCode = x.Select(x => x.Status.StatusCode).First().ToString(),
+                    Detail = x.Key,
+                })
+                .ToArray()
+                ?? Array.Empty<ErrorCodeDistribution>();
+        }
+    }
+
     public struct CallResult
     {
+        [JsonPropertyName("error")]
         public Exception Error { get; set; }
+        [JsonPropertyName("status")]
         public Status Status { get; set; }
+        [JsonPropertyName("duration")]
         public TimeSpan Duration { get; set; }
+        [JsonPropertyName("timestamp")]
         public DateTime TimeStamp { get; set; }
     }
 
@@ -115,7 +148,9 @@ namespace Benchmark.ClientLib.Reports
     {
         private static readonly int[] percentiles = new int[] { 10, 25, 50, 75, 90, 95, 99 };
 
+        [JsonPropertyName("percentile")]
         public int Percentile { get; set; }
+        [JsonPropertyName("latency")]
         public TimeSpan Latency { get; set; }
 
         public static LatencyDistribution[] Calculate(TimeSpan[] latencies)
@@ -157,6 +192,58 @@ namespace Benchmark.ClientLib.Reports
             }
             return res;
         }
+    }
 
+    public struct HistogramBucket
+    {
+        [JsonPropertyName("mark")]
+        public double Mark { get; set; }
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+        [JsonPropertyName("frequency")]
+        [JsonNumberHandling(JsonNumberHandling.AllowNamedFloatingPointLiterals)]
+        public double Frequency { get; set; }
+
+        public static HistogramBucket[] Calculate(TimeSpan[] latencies, double slowest, double fastest)
+        {
+            var bc = 10;
+            var buckets = new double[bc + 1];
+            var counts = new int[bc + 1];
+            var bs = (slowest - fastest) / bc;
+            for (var i = 0; i < bc; i++)
+            {
+                buckets[i] = fastest + bs * i;
+            }
+            buckets[bc] = slowest;
+            int bi = 0;
+            int max = 0;
+            for (var i = 0; i < latencies.Length;)
+            {
+                if (latencies[i].TotalMilliseconds <= buckets[bi])
+                {
+                    i++;
+                    counts[bi]++;
+                    if (max < counts[bi])
+                    {
+                        max = counts[bi];
+                    }
+                }
+                else if (bi < buckets.Length - 1)
+                {
+                    bi++;
+                }
+            }
+            var res = new HistogramBucket[buckets.Length];
+            for (var i = 0; i < buckets.Length; i++)
+            {
+                res[i] = new HistogramBucket
+                {
+                    Mark = buckets[i],
+                    Count = counts[i],
+                    Frequency = (double)counts[i] / latencies.Length,
+                };
+            }
+            return res;
+        }
     }
 }

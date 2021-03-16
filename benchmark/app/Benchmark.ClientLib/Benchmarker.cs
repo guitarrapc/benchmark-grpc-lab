@@ -306,7 +306,7 @@ namespace Benchmark.ClientLib
                 return;
 
             // generate html based on json data
-            var htmlReporter = new HtmlBenchReporter();
+            var htmlReporter = new HtmlReporter();
             var htmlReport = htmlReporter.CreateReport(reports, generateDetail);
             var page = new BenchmarkReportPageTemplate()
             {

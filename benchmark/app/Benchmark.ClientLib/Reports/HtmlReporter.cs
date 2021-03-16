@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib.Reports
 {
-    public class HtmlBenchReporter
+    public class HtmlReporter
     {
         public HtmlReport CreateReport(BenchReport[] reports, bool generateDetail)
         {
@@ -51,12 +49,12 @@ namespace Benchmark.ClientLib.Reports
                 .Select(x => new HtmlReportRequest
                 {
                     Key = scenarioName,
-                    Summaries = GetRequestSummaryItems(x),
+                    Summaries = GetRequestSummaries(x),
+                    StatusCodes = GetStatusCodes(x),
+                    ErrorCodes = GetErrorCodes(x),
                     Durations = Array.Empty<HtmlReportRequestDuration>(),
-                    Latencies = x.SelectMany(x => x.Latencies)
-                        .GroupBy(x => x.Percentile)
-                        .Select(x => new HtmlReportRequestLatency(x.Key, x.Select(x => x.Latency).Average()))
-                        .ToArray(),                        
+                    Latencies = GetRequestLatencies(x),
+                    Histograms = GetRequestHistograms(x),
                 })
                 .ToArray();
 
@@ -67,25 +65,56 @@ namespace Benchmark.ClientLib.Reports
                 requestResults);
         }
 
-        private HtmlReportRequestSummary[] GetRequestSummaryItems(IEnumerable<BenchReportItem> sources)
+        private HtmlReportRequestSummary[] GetRequestSummaries(IEnumerable<BenchReportItem> sources)
         {
-            // { connections int: duration TimeSpan}
             if (sources == null) throw new ArgumentNullException(nameof(sources));
             return sources.GroupBy(x => x.RequestCount)
                 .Select(xs =>
                 {
-                    var duration = xs.Select(x => x.Duration).Sum();
                     return new HtmlReportRequestSummary
                     {
                         RequestCount = xs.Key,
-                        Duration = xs.Select(x => x.Duration).Average(),
-                        Rps = xs.Sum(x => x.RequestCount) / duration.TotalSeconds,
+                        Duration = xs.Select(x => x.Average).Average(),
+                        Rps = xs.Sum(x => x.RequestCount) / xs.Select(x => x.Duration).Sum().TotalSeconds,
                         Errors = xs.Sum(x => x.Errors),
                     };
                 })
                 .ToArray();
         }
-
+        private HtmlReportRequestStatusCode[] GetStatusCodes(IEnumerable<BenchReportItem> sources)
+        {
+            if (sources == null) throw new ArgumentNullException(nameof(sources));
+            return sources.SelectMany(x => x.StatusCodeDistributions)
+                .GroupBy(x => x.StatusCode)
+                .Select(x => new HtmlReportRequestStatusCode(x.Key, x.Sum(x => x.Count)))
+                .ToArray();
+        }
+        private HtmlReportRequestErrorCode[] GetErrorCodes(IEnumerable<BenchReportItem> sources)
+        {
+            if (sources == null) throw new ArgumentNullException(nameof(sources));
+            return sources.SelectMany(x => x.ErrorCodeDistribution)
+                .Where(x => x.StatusCode?.ToLower() != "ok")
+                .GroupBy(x => x.Detail)
+                .Select(x => new HtmlReportRequestErrorCode(x.Select(x => x.StatusCode).FirstOrDefault(), x.Sum(x => x.Count), x.Key))
+                .ToArray()
+                ?? Array.Empty<HtmlReportRequestErrorCode>();
+        }
+        private HtmlReportRequestLatency[] GetRequestLatencies(IEnumerable<BenchReportItem> sources)
+        {
+            if (sources == null) throw new ArgumentNullException(nameof(sources));
+            return sources.SelectMany(x => x.Latencies)
+                .GroupBy(x => x.Percentile)
+                .Select(x => new HtmlReportRequestLatency(x.Key, x.Select(x => x.Latency).Average()))
+                .ToArray();
+        }
+        private HtmlReportRequestHistgram[] GetRequestHistograms(IEnumerable<BenchReportItem> sources)
+        {
+            if (sources == null) throw new ArgumentNullException(nameof(sources));
+            return sources.SelectMany(x => x.Histogram)
+                .GroupBy(x => x.Mark)
+                .Select(x => new HtmlReportRequestHistgram(x.Key, x.Select(x => x.Count).Sum(), x.Select(x => x.Frequency).Average()))
+                .ToArray();
+        }
         private static string ToJoinedString(IEnumerable<string> values, char separator = ',')
         {
             if (values == null)

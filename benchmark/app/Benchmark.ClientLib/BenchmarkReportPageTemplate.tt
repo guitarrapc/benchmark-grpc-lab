@@ -12,7 +12,9 @@
     var requests = Report.Requests;
 
     var lineColor = GetLineColor();
-    var barColor = GetColor();
+    var barColor = GetColor(0);
+    var latencyColor = GetColor(1);
+    var histogramColor = GetColor(2);
 #>
 
 <!-- auto-generated -->
@@ -106,7 +108,8 @@
                 <# if (requests.Any()) {#>
                 <# foreach(var request in requests) {#>
                 <div class="table-responsive">
-                    <h2 class="text-muted"><#= request.Key #> Summary</h2>
+                    <h2 class="text-muted"><#= request.Key #></h2>
+                    <p>Summary</p>
                     <table class="table table-striped table-sm">
                         <thead>
                             <th scope="col">Requests</th>
@@ -117,7 +120,7 @@
                         <tr>
                             <td>Duration (Avg)</td>
                         <# foreach(var item in request.Summaries) { #>
-                            <td><#= string.Format("{0:f2}", item.Duration.TotalMilliseconds) #> ms</td>
+                            <td><#= string.Format("{0:f3}", item.Duration.TotalMilliseconds) #> ms</td>
                         <# } #>
                         </tr>
                         <tr>
@@ -135,7 +138,42 @@
                         </tbody>
                     </table>
 
+                    <p>StatusCode Distribution</p>
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <th scope="col">StatusCode</th>
+                            <th scope="col">Responses</th>
+                        </thead>
+                        <# foreach(var item in request.StatusCodes) { #>
+                        <tr>
+                            <td><#= item.StatusCode #></td>
+                            <td><#= item.Count #> responses</td>
+                        </tr>
+                        <# } #>
+                        </tbody>
+                    </table>
+
+                    <# if (request.ErrorCodes.Any()) {#>
+                    <p>ErrorCode Distribution</p>
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <th scope="col">Count</th>
+                            <th scope="col">StatusCode</th>
+                            <th scope="col">Detail</th>
+                        </thead>
+                        <# foreach(var item in request.ErrorCodes) { #>
+                        <tr>
+                            <td><#= item.Count #></td>
+                            <td><#= item.StatusCode #></td>
+                            <td><#= item.Detail #></td>
+                        </tr>
+                        <# } #>
+                        </tbody>
+                    </table>
+                    <# } #>
+
                     <canvas id="<#= request.Key #>LatencyDistribution"></canvas>
+                    <canvas id="<#= request.Key #>Histogram"></canvas>
                     <canvas id="<#= request.Key #>RequestAvg"></canvas>
                     <canvas id="<#= request.Key #>RequestStackBar"></canvas>
 
@@ -152,8 +190,8 @@
                                 datasets: [
                                 {
                                     label: "Latency(ms)",
-                                    backgroundColor: "<#= barColor #>",
-                                    borderColor: "<#= barColor #>",
+                                    backgroundColor: "<#= latencyColor #>",
+                                    borderColor: "<#= latencyColor #>",
                                     data: [
                                     <# foreach(var item in request.Latencies) { #>
                                         <#= item.Duration.TotalMilliseconds #>,
@@ -182,6 +220,51 @@
                             }
                         });
                     </script>
+
+                    <script>
+                        var ctx = document.getElementById("<#= request.Key #>Histogram");
+                        var myChart = new Chart(ctx, {
+                            type: 'horizontalBar',
+                            data: {
+                                labels: [
+                                <# foreach(var item in request.Histograms) { #>
+                                    "<#= item.Mark #> [<#= item.Count #>]",
+                                <# } #>
+                                ],
+                                datasets: [
+                                {
+                                    label: "Frequency",
+                                    backgroundColor: "<#= histogramColor #>",
+                                    borderColor: "<#= histogramColor #>",
+                                    data: [
+                                    <# foreach(var item in request.Histograms) { #>
+                                        <#= item.Frequency #>,
+                                    <# } #>
+                                    ]
+                                },
+                                ]
+                            },
+                            options: {
+                                title: {
+                                    display: true,
+                                    text: 'Histogram',
+                                    padding: 3
+                                },
+                                legend: {
+                                    labels: {
+                                        boxWidth: 30,
+                                        padding: 20
+                                    },
+                                    display: true
+                                },
+                                tooltips: {
+                                    mode: 'label' // data colum for tooltip
+                                },
+                                responsive: true
+                            }
+                        });
+                    </script>
+
                     <script>
                         var ctx = document.getElementById("<#= request.Key #>RequestAvg");
                         var myChart = new Chart(ctx, {
@@ -222,7 +305,7 @@
                             options: {
                                 title: {
                                     display: true,
-                                    text: 'Average Duration & Rps (Unary)',
+                                    text: 'Duration & Rps',
                                     padding: 3
                                 },
                                 legend: {
@@ -231,69 +314,6 @@
                                         padding: 20
                                     },
                                     display: true
-                                },
-                                tooltips: {
-                                    mode: 'label' // data colum for tooltip
-                                },
-                                responsive: true
-                            }
-                        });
-                    </script>
-                    <script>
-                        var ctx = document.getElementById("<#= request.Key #>RequestStackBar");
-                        var myChart = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: [
-                                <# foreach(var item in request.Summaries) { #>
-                                    "<#= item.RequestCount #>",
-                                <# } #>
-                                ],
-                                datasets: [
-                                <# for(var i = 0; i < request.Durations.Length; i++) { #>
-                                {
-                                    <#
-                                        var current = request.Durations[i];
-                                        var items = current.Items;
-                                        var color = GetColor(i);
-                                    #>
-                                    type: 'bar',
-                                    label: "<#= current.Client #>",
-                                    borderWidth: 1,
-                                    backgroundColor: "<#= color #>",
-                                    borderColor: "<#= color #>",
-                                    data: [
-                                    <# foreach(var summaries in items) { #>
-                                        <# foreach(var item in summaries.Summaries) { #>
-                                            <#= item.Duration.TotalMilliseconds #>,
-                                        <# } #>
-                                    <# } #>
-                                    ]
-                                },
-                                <# } #>
-                                ]
-                            },
-                            options: {
-                                title: {
-                                    display: true,
-                                    text: 'Stacked Duration per Client (Unary)',
-                                    padding: 3
-                                },
-                                scales: {
-                                    xAxes: [{
-                                        stacked: true, // use stacked bar chart
-                                        categoryPercentage: 0.4 // width of bar
-                                    }],
-                                    yAxes: [{
-                                        stacked: true // use stacked bar chart
-                                    }]
-                                },
-                                legend: {
-                                    labels: {
-                                        boxWidth: 30,
-                                        padding: 20
-                                    },
-                                    display: false
                                 },
                                 tooltips: {
                                     mode: 'label' // data colum for tooltip

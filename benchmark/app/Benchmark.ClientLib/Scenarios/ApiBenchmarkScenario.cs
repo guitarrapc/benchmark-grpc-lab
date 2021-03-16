@@ -51,6 +51,7 @@ namespace Benchmark.ClientLib.Scenarios
                 Rps = results.Length / statistics.Elapsed.TotalSeconds,
                 Errors = results.Where(x => x.Error != null).Count(),
                 StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
+                ErrorCodeDistribution = ErrorCodeDistribution.FromCallResults(results),
                 Latencies = LatencyDistribution.Calculate(results.Select(x => x.Duration).OrderBy(x => x).ToArray()),
             });
         }
