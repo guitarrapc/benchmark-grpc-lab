@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Benchmark.ClientLib
 {
-    public static class ValueTaskUtils
+    internal static class ValueTaskUtils
     {
         public static async ValueTask<T[]> WhenAll<T>(ValueTask<T>[] tasks)
         {

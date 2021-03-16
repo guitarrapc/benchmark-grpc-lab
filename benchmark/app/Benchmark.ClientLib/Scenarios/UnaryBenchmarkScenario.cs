@@ -1,5 +1,5 @@
 using Benchmark.ClientLib.Reports;
-using Benchmark.ClientLib.Runtime;
+using Benchmark.ClientLib.Internal.Runtime;
 using Benchmark.Server.Shared;
 using Benchmark.Shared;
 using Grpc.Net.Client;
@@ -9,6 +9,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 
 namespace Benchmark.ClientLib.Scenarios
 {
@@ -29,41 +30,38 @@ namespace Benchmark.ClientLib.Scenarios
 
         public async Task Run(int requestCount, CancellationToken ct)
         {
-            using (var statistics = new Statistics(nameof(UnaryBenchmarkScenario) + requestCount))
+            Statistics statistics = null;
+            CallResult[] results = null;
+            using (statistics = new Statistics(nameof(UnaryBenchmarkScenario) + requestCount))
             {
-                await PlainTextAsync(requestCount, ct, (completeCount, errorCount) =>
-                {
-                    _reporter.AddBenchDetail(new BenchReportItem
-                    {
-                        ExecuteId = _reporter.ExecuteId,
-                        ClientId = _reporter.ClientId,
-                        TestName = nameof(UnaryBenchmarkScenario),
-                        Begin = statistics.Begin,
-                        End = DateTime.UtcNow,
-                        Duration = statistics.Elapsed,
-                        RequestCount = completeCount,
-                        Type = nameof(Grpc.Core.MethodType.Unary),
-                        Errors = errorCount,
-                    });
-                    statistics.HasError(errorCount != 0);
-                });
+                results = await PlainTextAsync(requestCount, ct);
             }
+
+            _reporter.AddDetail(new BenchReportItem
+            {
+                ExecuteId = _reporter.ExecuteId,
+                ClientId = _reporter.ClientId,
+                TestName = nameof(PlainTextAsync),
+                Begin = statistics.Begin,
+                End = DateTime.UtcNow,
+                Duration = statistics.Elapsed,
+                RequestCount = results.Length,
+                Type = nameof(MethodType.Unary),
+                Average = results.Select(x => x.Duration).Average(),
+                Fastest = results.Min(x => x.Duration),
+                Slowest = results.Max(x => x.Duration),
+                Rps = results.Length / statistics.Elapsed.TotalSeconds,
+                Errors = results.Where(x => x.Error != null).Count(),
+                StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
+            });
         }
 
-        /// <summary>
-        /// Concurrent Run
-        /// </summary>
-        /// <param name="requestCount"></param>
-        /// <param name="ct"></param>
-        /// <param name="reportAction"></param>
-        /// <returns></returns>
-        private async Task PlainTextAsync(int requestCount, CancellationToken ct, Action<int, int> reportAction)
+        private async Task<CallResult[]> PlainTextAsync(int requestCount, CancellationToken ct)
         {
             var data = new BenchmarkData
             {
                 PlainText = _config.GetRequestPayload(),
             };
-            void Run(UnaryResultWorkerPool<Nil> pool, BenchmarkData data) => pool.RunWorkers(id => GetClient(id).PlainTextAsync(data));
 
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)
@@ -73,21 +71,21 @@ namespace Benchmark.ClientLib.Scenarios
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
                 var linkedCt = linkedCts.Token;
 
-                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, linkedCt);
-                Run(pool, data);
+                using var pool = new UnaryResultWorkerPool<BenchmarkData, Nil>(_config.ClientConcurrency, linkedCt);
+                pool.RunWorkers((id, data, ct) => GetClient(id).PlainTextAsync(data), data, ct);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
+                return pool.GetResult();
             }
             else
             {
                 // request base
-                using var pool = new UnaryResultWorkerPool<Nil>(_config.ClientConcurrency, ct)
+                using var pool = new UnaryResultWorkerPool<BenchmarkData, Nil>(_config.ClientConcurrency, ct)
                 {
                     CompleteCondition = x => x.completed >= requestCount,
                 };
-                Run(pool, data);
+                pool.RunWorkers((id, data, ct) => GetClient(id).PlainTextAsync(data), data, ct);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
+                return pool.GetResult();
             }
         }
     }

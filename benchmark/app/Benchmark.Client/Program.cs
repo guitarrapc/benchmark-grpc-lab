@@ -1,5 +1,4 @@
 using Benchmark.ClientLib;
-using Benchmark.ClientLib.Utils;
 using ConsoleAppFramework;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

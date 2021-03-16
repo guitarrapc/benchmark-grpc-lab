@@ -1,6 +1,6 @@
 using Amazon.SimpleSystemsManagement;
 using Amazon.SimpleSystemsManagement.Model;
-using Benchmark.ClientLib.Utils;
+using Benchmark.ClientLib.Internal;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -40,7 +40,7 @@ namespace Benchmark.ClientLib.LoadTester
                 return loadTester;
 
             // todo: Google... etc...?
-            if (AmazonUtils.IsAmazonEc2())
+            if (AmazonEnvironment.IsAmazonEc2())
             {
                 var config = new AmazonSimpleSystemsManagementConfig
                 {

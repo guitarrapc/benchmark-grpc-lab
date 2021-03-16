@@ -1,9 +1,8 @@
 using Benchmark.ClientLib.Reports;
-using Benchmark.ClientLib.Runtime;
+using Benchmark.ClientLib.Internal.Runtime;
 using Benchmark.Server.Shared;
 using Grpc.Core;
 using MagicOnion.Client;
-using MessagePack;
 using System;
 using System.Linq;
 using System.Threading;
@@ -26,37 +25,40 @@ namespace Benchmark.ClientLib.Scenarios
 
         private ILongRunBenchmarkHub GetClient(int n) => _clients[n % _clients.Length];
 
-        public async Task Run(int requestCount, int waitMilliseonds, CancellationToken ct)
+        public async Task Run(int requestCount, int waitMilliseconds, CancellationToken ct)
         {
-            using (var statistics = new Statistics(nameof(CCoreHubLongRunBenchmarkScenario) + requestCount))
+            Statistics statistics = null;
+            CallResult[] results = null;
+            using (statistics = new Statistics(nameof(UnaryBenchmarkScenario) + requestCount))
             {
-                await ProcessAsync(requestCount, waitMilliseonds, ct, (completeCount, errorCount) =>
-                {
-                    _reporter.AddBenchDetail(new BenchReportItem
-                    {
-                        ExecuteId = _reporter.ExecuteId,
-                        ClientId = _reporter.ClientId,
-                        TestName = nameof(CCoreHubLongRunBenchmarkScenario),
-                        Begin = statistics.Begin,
-                        End = DateTime.UtcNow,
-                        Duration = statistics.Elapsed,
-                        RequestCount = completeCount,
-                        Type = nameof(Grpc.Core.MethodType.DuplexStreaming),
-                        Errors = errorCount,
-                    });
-                    statistics.HasError(errorCount != 0);
-                });
+                results = await ProcessAsync(requestCount, waitMilliseconds, ct);
             }
+
+            _reporter.AddDetail(new BenchReportItem
+            {
+                ExecuteId = _reporter.ExecuteId,
+                ClientId = _reporter.ClientId,
+                TestName = nameof(ProcessAsync),
+                Begin = statistics.Begin,
+                End = DateTime.UtcNow,
+                Duration = statistics.Elapsed,
+                RequestCount = results.Length,
+                Type = nameof(MethodType.DuplexStreaming),
+                Average = results.Select(x => x.Duration).Average(),
+                Fastest = results.Select(x => x.Duration).Min(),
+                Slowest = results.Select(x => x.Duration).Max(),
+                Rps = results.Length / statistics.Elapsed.TotalSeconds,
+                Errors = results.Where(x => x.Error != null).Count(),
+                StatusCodeDistributions = StatusCodeDistribution.FromCallResults(results),
+            });
         }
 
-        private async Task ProcessAsync(int requestCount, int waitMilliseonds, CancellationToken ct, Action<int, int> reportAction)
+        private async Task<CallResult[]> ProcessAsync(int requestCount, int waitMilliseonds, CancellationToken ct)
         {
             var data = new LongRunBenchmarkData
             {
                 WaitMilliseconds = waitMilliseonds,
             };
-            void Run(TaskWorkerPool pool, LongRunBenchmarkData data) => pool.RunWorkers(id => GetClient(id).Process(data));
-
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)
             {
@@ -65,21 +67,21 @@ namespace Benchmark.ClientLib.Scenarios
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
                 var linkedCt = linkedCts.Token;
 
-                using var pool = new TaskWorkerPool(_config.ClientConcurrency, linkedCt);
-                Run(pool, data);
+                using var pool = new TaskWorkerPool<LongRunBenchmarkData>(_config.ClientConcurrency, linkedCt);
+                pool.RunWorkers((id, data, ct) => GetClient(id).Process(data), data, ct);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
+                return pool.GetResult();
             }
             else
             {
                 // request base
-                using var pool = new TaskWorkerPool(_config.ClientConcurrency, ct)
+                using var pool = new TaskWorkerPool<LongRunBenchmarkData>(_config.ClientConcurrency, ct)
                 {
                     CompleteCondition = x => x.completed >= requestCount,
                 };
-                Run(pool, data);
+                pool.RunWorkers((id, data, ct) => GetClient(id).Process(data), data, ct);
                 await Task.WhenAny(pool.WaitForCompleteAsync(), pool.WaitForTimeout());
-                reportAction.Invoke(pool.CompleteCount, pool.Errors.Count);
+                return pool.GetResult();
             }
         }
 

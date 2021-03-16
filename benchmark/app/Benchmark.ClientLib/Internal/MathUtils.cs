@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Benchmark.ClientLib.Utils
+namespace Benchmark.ClientLib.Internal
 {
-    public static class MathUtils
+    internal static class MathUtils
     {
         /// <summary>
         /// Geometric Average: (x1*x2*...*xn)^(1/n)

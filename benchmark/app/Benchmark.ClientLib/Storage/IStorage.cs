@@ -1,6 +1,6 @@
 using Amazon;
 using Amazon.S3;
-using Benchmark.ClientLib.Utils;
+using Benchmark.ClientLib.Internal;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -54,7 +54,7 @@ namespace Benchmark.ClientLib.Storage
                 return storage;
 
             // todo: Google... etc...?
-            if (AmazonUtils.IsAmazonEc2() || Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") == "1")
+            if (AmazonEnvironment.IsAmazonEc2() || Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") == "1")
             {
                 var config = new AmazonS3Config()
                 {

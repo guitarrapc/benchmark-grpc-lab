@@ -1,6 +1,7 @@
 using Benchmark.Server.Shared;
 using Benchmark.Server.Shared.Data;
 using Benchmark.Shared;
+using Grpc.Core;
 using MagicOnion;
 using MagicOnion.Server;
 using MessagePack;
@@ -27,24 +28,6 @@ namespace Benchmark.Server.Services
             var pipe = new Pipe();
             Writer = pipe.Writer;
             Reader = pipe.Reader;
-        }
-
-        public UnaryResult<int> SumAsync(int x, int y)
-        {
-            Statistics.UnaryConnected();
-            try
-            {
-                return UnaryResult(x + y);
-            }
-            catch
-            {
-                Statistics.UnaryError();
-                return UnaryResult(0);
-            }
-            finally
-            {
-                Statistics.UnaryDisconnected();
-            }
         }
 
         public UnaryResult<Nil> PlainTextAsync(BenchmarkData data)

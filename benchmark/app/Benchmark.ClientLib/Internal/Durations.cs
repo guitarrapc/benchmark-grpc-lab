@@ -1,8 +1,8 @@
 using System;
 
-namespace Benchmark.ClientLib.Utils
+namespace Benchmark.ClientLib.Internal
 {
-    public static class Durations
+    internal static class Durations
     {
         private const char DayChar = 'd';
         private const char HourChar = 'h';

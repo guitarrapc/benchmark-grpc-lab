@@ -1,6 +1,6 @@
 using System;
 
-namespace Benchmark.ClientLib.Utils
+namespace Benchmark.ClientLib
 {
     public enum RequestPayload
     {

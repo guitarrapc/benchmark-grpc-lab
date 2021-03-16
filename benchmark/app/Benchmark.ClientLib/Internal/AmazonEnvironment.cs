@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Benchmark.ClientLib.Utils
+namespace Benchmark.ClientLib.Internal
 {
-    public static class AmazonUtils
+    internal static class AmazonEnvironment
     {
         public static bool IsAmazonEc2()
         {

@@ -1,41 +1,42 @@
-using MagicOnion;
+using Benchmark.ClientLib.Reports;
+using Grpc.Core;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Benchmark.ClientLib.Runtime
+namespace Benchmark.ClientLib.Internal.Runtime
 {
-    public class UnaryResultWorkerPool<T> : IDisposable
+    public class AsyncUnaryCallWorkerPool<TRequest, TReply> : IDisposable
     {
         private readonly int _workerCount;
         private readonly CancellationToken _ct;
         private readonly TaskCompletionSource _timeoutTcs = new TaskCompletionSource();
         private readonly TaskCompletionSource _completeTask = new TaskCompletionSource();
         private int _completeCount;
-        private ConcurrentDictionary<string, Exception> _errors = new ConcurrentDictionary<string, Exception>();
 
-        private readonly Channel<Func<int, UnaryResult<T>>> _channel;
-        private readonly ChannelWriter<Func<int, UnaryResult<T>>> _writer;
-        private readonly ChannelReader<Func<int, UnaryResult<T>>> _reader;
+        private readonly Channel<Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>>> _channel;
+        private readonly ChannelWriter<Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>>> _writer;
+        private readonly ChannelReader<Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>>> _reader;
+
+        private readonly ConcurrentBag<CallResult> _results = new ConcurrentBag<CallResult>();
 
         public Func<(int current, int completed), bool> CompleteCondition { get; init; } = (x) => false;
         public int CompleteCount => _completeCount;
         public bool Timeouted => _timeoutTcs.Task.IsCompleted;
         public bool Completed => _completeTask.Task.IsCompleted;
-        public ConcurrentDictionary<string, Exception> Errors => _errors;
 
-        public UnaryResultWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
+        public AsyncUnaryCallWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
         {
         }
 
-        public UnaryResultWorkerPool(int workerCount, int channelSize, CancellationToken ct)
+        public AsyncUnaryCallWorkerPool(int workerCount, int channelSize, CancellationToken ct)
         {
             _workerCount = workerCount;
             _ct = ct;
             _ct.Register(() => _timeoutTcs.TrySetResult());
-            _channel = Channel.CreateBounded<Func<int, UnaryResult<T>>>(new BoundedChannelOptions(channelSize)
+            _channel = System.Threading.Channels.Channel.CreateBounded<Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>>>(new BoundedChannelOptions(channelSize)
             {
                 SingleReader = false,
                 SingleWriter = true,
@@ -57,22 +58,31 @@ namespace Benchmark.ClientLib.Runtime
         /// <returns></returns>
         public Task WaitForTimeout() => _timeoutTcs.Task;
 
-        public void RunWorkers(Func<int, UnaryResult<T>> action)
+        public void RunWorkers(Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>> action, TRequest request, CancellationToken ct)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
 
-            RunCore(action);
+            RunCore(action, request, ct);
             WatchComplete();
         }
 
-        public void Dispose() => _writer.TryComplete();
+        public CallResult[] GetResult()
+        {
+            return _results.ToArray();
+        }
+
+        public void Dispose()
+        {
+            _writer.TryComplete();
+            _results.Clear();
+        }
 
         /// <summary>
         /// Main execution
         /// </summary>
         /// <returns></returns>
-        private void RunCore(Func<int, UnaryResult<T>> action)
+        private void RunCore(Func<int, TRequest, CancellationToken, AsyncUnaryCall<TReply>> action, TRequest request, CancellationToken ct)
         {
             // write
             Task.Run(async () =>
@@ -104,34 +114,50 @@ namespace Benchmark.ClientLib.Runtime
                 var id = workerId++;
                 Task.Run(async () =>
                 {
-                    while (await _reader.WaitToReadAsync(_ct).ConfigureAwait(false))
+                    while (await _reader.WaitToReadAsync(_ct))
                     {
+                        var sw = ValueStopwatch.StartNew();
+                        Exception error = null;
+                        Status status = Status.DefaultSuccess;
                         try
                         {
-                            var item = await _reader.ReadAsync(_ct).ConfigureAwait(false);
+                            var item = await _reader.ReadAsync(_ct);
 
                             if (_ct.IsCancellationRequested)
                                 return;
 
-                            await item.Invoke(id);
+                            await item.Invoke(id, request, ct);
                             //Console.WriteLine($"done {_completeCount} ({_reader.Count}, id {id})");
+                        }
+                        catch (RpcException rex)
+                        {
+                            error = rex;
+                            status = rex.Status;
+                        }
+                        catch (OperationCanceledException oex)
+                        {
+                            error = oex;
+                            status = Status.DefaultCancelled;
                         }
                         catch (ChannelClosedException)
                         {
                             // already closed.
                         }
-                        catch (OperationCanceledException)
-                        {
-                            // canceled
-                        }
                         catch (Exception ex)
                         {
-                            Console.Error.WriteLine($"exception {ex.Message} {ex.GetType().FullName} {ex.StackTrace}");
-                            _errors.TryAdd(ex.GetType().FullName, ex);
+                            error = ex;
+                            status = new Status(StatusCode.Unknown, ex.Message);
                         }
                         finally
                         {
                             Interlocked.Increment(ref _completeCount);
+                            _results.Add(new CallResult
+                            {
+                                Duration = sw.Elapsed,
+                                Error = error,
+                                Status = status,
+                                TimeStamp = DateTime.UtcNow,
+                            });
                         }
                     }
                 }, _ct);
@@ -151,7 +177,7 @@ namespace Benchmark.ClientLib.Runtime
                         return;
                     }
 
-                    await Task.Delay(100).ConfigureAwait(false);
+                    await Task.Delay(100);
                 }
                 _writer.TryComplete();
                 _completeTask.SetResult();

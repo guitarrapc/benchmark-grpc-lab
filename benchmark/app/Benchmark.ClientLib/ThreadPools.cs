@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace Benchmark.ClientLib.Utils
+namespace Benchmark.ClientLib
 {
     public class ThreadPools
     {

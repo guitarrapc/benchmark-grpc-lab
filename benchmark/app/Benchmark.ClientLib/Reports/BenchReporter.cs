@@ -12,6 +12,7 @@ namespace Benchmark.ClientLib.Reports
     {
         MagicOnion,
         GrpcDotnet,
+        GrpcCcore,
         AspnetCore,
     }
     public class BenchReporter
@@ -23,7 +24,7 @@ namespace Benchmark.ClientLib.Reports
         public string ClientId { get; }
         public string ExecuteId { get; }
 
-        public BenchReporter(string reportId, string clientId, string executeId, Framework framework = Framework.MagicOnion)
+        public BenchReporter(string reportId, string clientId, string executeId, Framework framework, string scenarioName, BenchmarkerConfig config)
         {
             ReportId = reportId;
             ClientId = clientId;
@@ -42,8 +43,13 @@ namespace Benchmark.ClientLib.Reports
                 SystemMemory = GetSystemMemory(),
                 Framework = framework.ToString(),
                 Version = GetFrameworkVersion(framework),
+                ScenarioName = scenarioName,
+                Concurrency = config.ClientConcurrency,
+                Connections = config.ClientConnections,
             };
             _items = new List<BenchReportItem>();
+
+            _report.Begin = DateTime.UtcNow;
         }
 
         private string GetFrameworkVersion(Framework framework)
@@ -55,6 +61,7 @@ namespace Benchmark.ClientLib.Reports
             {
                 Framework.MagicOnion => typeof(MagicOnion.IServiceMarker),
                 Framework.GrpcDotnet => typeof(Grpc.Net.Client.GrpcChannel),
+                Framework.GrpcCcore => typeof(Grpc.Core.Channel),
                 _ => throw new NotImplementedException(),
             };
             var version = type.Assembly.GetName().Version?.ToString();
@@ -82,10 +89,10 @@ namespace Benchmark.ClientLib.Reports
         }
 
         /// <summary>
-        /// Add inidivisual Bench Report Detail
+        /// Add inidivisual Detail Report
         /// </summary>
         /// <param name="item"></param>
-        public void AddBenchDetail(BenchReportItem item)
+        public void AddDetail(BenchReportItem item)
         {
             _items.Add(item);
             _report.Items = _items.ToArray();
