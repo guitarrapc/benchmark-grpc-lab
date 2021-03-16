@@ -118,7 +118,7 @@
                         <# } #>
                         </thead>
                         <tr>
-                            <td>Duration (Avg)</td>
+                            <td>Average</td>
                         <# foreach(var item in request.Summaries) { #>
                             <td><#= string.Format("{0:f3}", item.Duration.TotalMilliseconds) #> ms</td>
                         <# } #>

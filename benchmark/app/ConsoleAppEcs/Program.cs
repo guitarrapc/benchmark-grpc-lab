@@ -40,8 +40,9 @@ namespace ConsoleAppEcs
                 //args = "request -processCount 10 -workerPerProcess 100 -executePerWorker 150 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 20 -workerPerProcess 10 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
 
-                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
-                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName GrpcWorker".Split(' ');
+                args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName UnaryWorker".Split(' ');
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName GrpcWorker".Split(' ');
+                //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1 -workerName ApiWorker".Split(' ');
 
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName UnaryWorker".Split(' ');
                 //args = "request -processCount 1 -workerPerProcess 1 -executePerWorker 1000 -workerName HubWorker".Split(' ');
@@ -136,6 +137,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -147,8 +149,6 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
-            // var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
-            //var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
             var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
@@ -157,6 +157,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
@@ -200,6 +201,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
 
             // non ssl localhost
             //_hostAddress = "http://localhost";
@@ -211,8 +213,7 @@ namespace ConsoleAppEcs
             if (_hostAddress.StartsWith("https://"))
                 _hostAddress = _hostAddress + ":5001";
 
-            // var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
-            var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, null, _cts.Token)
@@ -220,6 +221,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
@@ -263,6 +265,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -274,8 +277,6 @@ namespace ConsoleAppEcs
             //_reportId = System.IO.File.ReadAllText("current_report_id");
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
-            //var iterations = new[] { 1, 2, 5, 10, 20, 50, 100, 200 };
-            //var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
             var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
@@ -284,6 +285,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
@@ -327,6 +329,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -338,7 +341,7 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //path = "sample-bucket";
 
-            var iterations = new[] { 1, 10, 100, 200, 500, 1000 };
+            var iterations = new[] { 1 };
 
             Console.WriteLine($"iterations {string.Join(",", iterations)}, hostAddress {_hostAddress}, reportId {_reportId}, path {path}");
             _benchmarker = new Benchmarker(path, null, _cts.Token)
@@ -346,6 +349,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
@@ -390,6 +394,7 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
 
             // non ssl localhost
             //_hostAddress = "http://localhost:5000";
@@ -409,6 +414,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),
@@ -454,6 +460,8 @@ namespace ConsoleAppEcs
             var path = Environment.GetEnvironmentVariable("BENCH_S3BUCKET") ?? throw new ArgumentNullException($"Environment variables BENCH_S3BUCKET is missing.");
             var duration = Environment.GetEnvironmentVariable("BENCH_DURATION") ?? "30s";
             var concurrency = Environment.GetEnvironmentVariable("BENCH_CONCURRENCY") ?? "50";
+            var connections = Environment.GetEnvironmentVariable("BENCH_CONNECTIONS") ?? "50";
+
             // must add port like server.local:80
             if (_hostAddress.StartsWith("http://"))
                 _hostAddress = _hostAddress?.Replace("http://", "") + ":80";
@@ -470,7 +478,7 @@ namespace ConsoleAppEcs
             //_reportId = "abc-123";
             //var path = "magiconionbenchmarkcdkstack-bucket83908e77-1ado8gtcl00cb";
 
-            var iterations = new[] { 1000 };
+            var iterations = new[] { 1 };
             _waitMilliseconds = 240_000; // 1000 = 1sec
             _isHttps = _hostAddress.StartsWith("https://");
 
@@ -480,6 +488,7 @@ namespace ConsoleAppEcs
                 Config = new BenchmarkerConfig
                 {
                     ClientConcurrency = int.Parse(concurrency),
+                    ClientConnections = int.Parse(connections),
                     Duration = duration,
                     TotalRequests = iterations,
                     UseSelfCertEndpoint = _hostAddress.StartsWith("https://"),

@@ -163,7 +163,7 @@ namespace Benchmark.ClientLib
             this.Write(" req</th>\r\n                        ");
  } 
             this.Write("                        </thead>\r\n                        <tr>\r\n                 " +
-                    "           <td>Duration (Avg)</td>\r\n                        ");
+                    "           <td>Average</td>\r\n                        ");
  foreach(var item in request.Summaries) { 
             this.Write("                            <td>");
             this.Write(this.ToStringHelper.ToStringWithCulture(string.Format("{0:f3}", item.Duration.TotalMilliseconds)));
