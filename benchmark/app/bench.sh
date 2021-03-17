@@ -30,6 +30,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 		--cpus "${GRPC_SERVER_CPUS}" \
 		--memory "${GRPC_SERVER_RAM}" \
 		-e GRPC_SERVER_CPUS \
+    -e ASPNETCORE_ENVIRONMENT=Development \
 		--network=host --detach --tty "${NAME}" >/dev/null
 	sleep 5
 	. ./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
