@@ -1,4 +1,5 @@
 using Benchmark.ClientLib.Internal;
+using Microsoft.Extensions.Logging;
 using System;
 
 namespace Benchmark.ClientLib
@@ -24,8 +25,6 @@ namespace Benchmark.ClientLib
         {
             End = DateTime.UtcNow;
             Duration = Elapsed;
-
-            Console.WriteLine($" * Elapsed({Name}): {Duration.TotalSeconds}sec");
         }
     }
 }

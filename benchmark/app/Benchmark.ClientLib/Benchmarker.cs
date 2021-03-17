@@ -53,7 +53,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -62,7 +62,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (var request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin unary benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin unary benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     var scenario = new UnaryBenchmarkScenario(channels, reporter, Config);
                     await scenario.Run(request, _cancellationToken);
                 }
@@ -84,7 +84,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -93,7 +93,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (var request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin Streaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin Streaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     await using var scenario = new HubBenchmarkScenario(channels, reporter, Config);
                     await scenario.Run(request, _cancellationToken);
                 }
@@ -117,7 +117,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -126,7 +126,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (var request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin LongRunHub Streaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin LongRunHub Streaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     await using var scenario = new HubLongRunBenchmarkScenario(channels, reporter, Config);
                     await scenario.Run(request, waitMilliseconds, _cancellationToken);
                 }
@@ -151,7 +151,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             var credentials = !insecure
                 ? Config.UseSelfCertEndpoint
@@ -165,7 +165,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (int request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin LongRun C-CoreStreaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin LongRun C-CoreStreaming benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     await using var scenario = new CCoreHubLongRunBenchmarkScenario(channels, reporter, Config);
                     await scenario.Run(request, waitMilliseconds, _cancellationToken);
                 }
@@ -188,7 +188,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -197,7 +197,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (int request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin grpc benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin grpc benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     var scenario = new GrpcBenchmarkScenario(channels, reporter, Config);
                     await scenario.Run(request, _cancellationToken);
                 }
@@ -219,7 +219,7 @@ namespace Benchmark.ClientLib
                 reportId = NewReportId();
 
             var executeId = Guid.NewGuid().ToString();
-            _logger?.LogInformation($"reportId: {reportId}");
+            _logger?.LogDebug($"reportId: {reportId}");
 
             // single thread-safe client
             var apiClients = Enumerable.Range(0, Config.ClientConnections).Select(x => new ApiBenchmarkScenario.ApiClient(hostAddress)).ToArray();
@@ -229,7 +229,7 @@ namespace Benchmark.ClientLib
             {
                 foreach (var request in Config.TotalRequests)
                 {
-                    _logger?.LogInformation($"Begin api benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
+                    _logger?.LogDebug($"Begin api benchmark. requests {request}, concurrency {Config.ClientConcurrency}, connections {Config.ClientConnections}");
                     var scenario = new ApiBenchmarkScenario(apiClients, reporter, Config);
                     await scenario.Run(request, _cancellationToken);
                 }
@@ -247,7 +247,7 @@ namespace Benchmark.ClientLib
             // save json
             var storage = StorageFactory.Create(_logger);
             var jsonOutput = await storage.Save(_path, $"reports/{reporter.ReportId}", reporter.GetJsonFileName(), benchJson, ct: _cancellationToken);
-            _logger?.LogInformation($"JsonReport Uri: {jsonOutput}");
+            _logger?.LogDebug($"JsonReport Uri: {jsonOutput}");
 
             // generate html report
             if (generateHtmlReport)
@@ -322,7 +322,7 @@ namespace Benchmark.ClientLib
             var storage = StorageFactory.Create(_logger);
             var outputUri = await storage.Save(_path, $"html/{reportId}", htmlFileName, content, overwrite: true, _cancellationToken);
 
-            _logger?.LogInformation($"HtmlReport Uri: {outputUri}");
+            _logger?.LogDebug($"HtmlReport Uri: {outputUri}");
         }
 
         public async Task<ClientInfo[]> ListClients()

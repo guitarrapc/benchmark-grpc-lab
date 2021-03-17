@@ -10,9 +10,13 @@ using ZLogger;
 var builder = Host.CreateDefaultBuilder()
     .ConfigureLogging((hostContext, logging) =>
     {
+        // set `DOTNET_ENVIRONMENT=Production` or leave blank to use Production.
+        var logLevel = hostContext.HostingEnvironment.IsDevelopment()
+            ? LogLevel.Debug
+            : LogLevel.Information; // output only result
         logging.ClearProviders();
         logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
-        logging.SetMinimumLevel(LogLevel.Information);
+        logging.SetMinimumLevel(logLevel);
     });
 if (Environment.GetEnvironmentVariable("BENCHCLIENT_RUNASWEB") == "true")
 {

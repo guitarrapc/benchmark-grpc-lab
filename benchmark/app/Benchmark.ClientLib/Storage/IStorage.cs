@@ -260,7 +260,7 @@ namespace Benchmark.ClientLib.Storage
                 //var savePath = overwrite ? basePath : await GetSafeSavePath(path, basePath, 1, ct);
                 var savePath = basePath;
 
-                _logger?.LogInformation($"uploading content to S3. bucket {path} key {savePath}");
+                _logger?.LogDebug($"uploading content to S3. bucket {path} key {savePath}");
                 await _client.PutObjectAsync(new Amazon.S3.Model.PutObjectRequest
                 {
                     BucketName = path,
