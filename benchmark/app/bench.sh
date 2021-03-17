@@ -35,6 +35,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	. ./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
 	docker run --name ghz --rm --network=host \
     --cpus $GRPC_CLIENT_CPUS \
+    -e BENCHCLIENT_USE_S3="0" \
     benchmark.client:latest \
         BenchmarkRunner \
         $BENCH_NAME \

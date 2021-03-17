@@ -36,6 +36,7 @@ foreach ($benchmark in ${BENCHMARKS_TO_RUN}) {
 	$job = Start-Job {. ${using:CWD}/collect_stats.ps1 -NAME "${using:NAME}" -REPORT_DIR "${using:CWD}/${using:RESULTS_DIR}"}
 	docker run --name benchmark.client --rm --network=host `
 		--cpus $GRPC_CLIENT_CPUS `
+        -e BENCHCLIENT_USE_S3="0" `
         benchmark.client:latest `
             BenchmarkRunner `
             $BENCH_NAME `
