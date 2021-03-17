@@ -43,7 +43,7 @@ namespace Benchmark.ClientLib.Reports
         public HtmlReportRequestErrorCode[] ErrorCodes { get; init; }
         public HtmlReportRequestDuration[] Durations { get; init; }
         public HtmlReportRequestLatency[] Latencies { get; set; }
-        public HtmlReportRequestHistgram[] Histograms { get; set; }
+        public HtmlReportRequestHistogram[] Histograms { get; set; }
     }
     public record HtmlReportRequestSummary
     {
@@ -61,5 +61,5 @@ namespace Benchmark.ClientLib.Reports
         public HtmlReportRequestSummary[] Summaries { get; init; }
     }
     public record HtmlReportRequestLatency(int Percentile, TimeSpan Duration);
-    public record HtmlReportRequestHistgram(double Mark, int Count, double Frequency);
+    public record HtmlReportRequestHistogram(double Mark, int Count, double Frequency);
 }

@@ -33,14 +33,23 @@
   </ItemGroup>
  
   <ItemGroup>
+    <Compile Update="BenchmarkConsoleOutputTemplate.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>BenchmarkConsoleOutputTemplate.tt</DependentUpon>
+    </Compile>
     <Compile Update="BenchmarkReportPageTemplate.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>BenchmarkReportPageTemplate.tt</DependentUpon>
     </Compile>
   </ItemGroup>
-
+ 
   <ItemGroup>
+    <None Update="BenchmarkConsoleOutputTemplate.tt">
+      <LastGenOutput>BenchmarkConsoleOutputTemplate.cs</LastGenOutput>
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+    </None>
     <None Update="BenchmarkReportPageTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>BenchmarkReportPageTemplate.cs</LastGenOutput>

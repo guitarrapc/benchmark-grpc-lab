@@ -81,7 +81,7 @@ namespace ConsoleAppEcs
                         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
                         Console.WriteLine("Generating html.");
                         var benchmarker = new Benchmarker(path, null, cts.Token);
-                        benchmarker.GenerateHtml(reportId, generateDetail: false).GetAwaiter().GetResult();
+                        benchmarker.GenerateHtmlAsync(reportId).GetAwaiter().GetResult();
                     },
                 });
                 //.RunDFrameAsync(args, new DFrameOptions(host, port, workerConnectToHost, port, new InProcessScalingProvider())

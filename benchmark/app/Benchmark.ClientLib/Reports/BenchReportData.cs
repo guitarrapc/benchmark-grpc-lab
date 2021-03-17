@@ -1,3 +1,4 @@
+using Benchmark.ClientLib.Internal;
 using Grpc.Core;
 using System;
 using System.Collections.Generic;
@@ -155,6 +156,9 @@ namespace Benchmark.ClientLib.Reports
 
         public static LatencyDistribution[] Calculate(TimeSpan[] latencies)
         {
+            if (!latencies.Any())
+                return Array.Empty<LatencyDistribution>();
+
             var data = new double[percentiles.Length];
             var length = latencies.Length;
 
@@ -209,10 +213,18 @@ namespace Benchmark.ClientLib.Reports
             var bc = 10;
             var buckets = new double[bc + 1];
             var counts = new int[bc + 1];
-            var bs = (slowest - fastest) / bc;
+            var bs = (slowest - fastest);
             for (var i = 0; i < bc; i++)
             {
-                buckets[i] = fastest + bs * i;
+                // ghz is using linear, but it's mark interval is too wide for Benchmark.
+                // let's change interval to shorter in, longer out.
+                //buckets[i] = Easing.Linear(i, fastest, bs, bc); // ghz
+                //buckets[i] = Easing.InQuadratic(i, fastest, bs, bc);
+                //buckets[i] = Easing.InCubic(i, fastest, bs, bc);
+                //buckets[i] = Easing.InQuintic(i, fastest, bs, bc);
+                //buckets[i] = Easing.InSinusoidal(i, fastest, bs, bc);
+                //buckets[i] = Easing.InExponential(i, fastest, bs, bc);
+                buckets[i] = Easing.InCircular(i, fastest, bs, bc);
             }
             buckets[bc] = slowest;
             int bi = 0;

@@ -29,7 +29,7 @@ namespace Benchmark.ClientLib.Scenarios
         public async Task Run(int requestCount, CancellationToken ct)
         {
             Statistics statistics = null;
-            CallResult[] results = null;
+            CallResult[] results = Array.Empty<CallResult>();
             using (statistics = new Statistics(nameof(UnaryBenchmarkScenario) + requestCount))
             {
                 results = await PlainTextAsync(requestCount, ct);

@@ -36,6 +36,7 @@ namespace Benchmark.ClientLib
             _path = path;
             _logger = logger;
             _cancellationToken = cancellationToken;
+            ThreadPools.ModifyThreadPool(Environment.ProcessorCount * 8, Environment.ProcessorCount * 8, logger);
         }
 
         private static string NewReportId() => DateTime.UtcNow.ToString("yyyyMMddHHmmss.fff") + "-" + Guid.NewGuid().ToString();
@@ -53,7 +54,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -69,7 +69,7 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
         /// <summary>
@@ -85,7 +85,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -101,7 +100,7 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
         /// <summary>
@@ -119,7 +118,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -135,7 +133,7 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
         /// <summary>
@@ -154,7 +152,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             var credentials = !insecure
                 ? Config.UseSelfCertEndpoint
@@ -175,7 +172,7 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
         /// <summary>
@@ -192,7 +189,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             var channels = Enumerable.Range(0, Config.ClientConnections).Select(x => CreateGrpcChannel(hostAddress)).ToArray();
 
@@ -208,7 +204,7 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
         /// <summary>
@@ -224,7 +220,6 @@ namespace Benchmark.ClientLib
 
             var executeId = Guid.NewGuid().ToString();
             _logger?.LogInformation($"reportId: {reportId}");
-            _logger?.LogInformation($"executeId: {executeId}");
 
             // single thread-safe client
             var apiClients = Enumerable.Range(0, Config.ClientConnections).Select(x => new ApiBenchmarkScenario.ApiClient(hostAddress)).ToArray();
@@ -241,17 +236,26 @@ namespace Benchmark.ClientLib
             }
             reporter.End();
 
-            await OutputAsync(reporter);
+            await OutputReportAsync(reporter, Config.GenerateHtmlReportAfterBench);
         }
 
-        private async Task OutputAsync(BenchReporter reporter)
+        private async Task OutputReportAsync(BenchReporter reporter, bool generateHtmlReport)
         {
             // output
             var benchJson = reporter.ToJson();
 
             // save json
             var storage = StorageFactory.Create(_logger);
-            await storage.Save(_path, $"reports/{reporter.ReportId}", reporter.GetJsonFileName(), benchJson, ct: _cancellationToken);
+            var jsonOutput = await storage.Save(_path, $"reports/{reporter.ReportId}", reporter.GetJsonFileName(), benchJson, ct: _cancellationToken);
+            _logger?.LogInformation($"JsonReport Uri: {jsonOutput}");
+
+            // generate html report
+            if (generateHtmlReport)
+            {
+                await GenerateHtmlAsync(reporter.ReportId);
+            }
+
+            ConsoleOutput(reporter.Report);
         }
 
         /// <summary>
@@ -298,7 +302,7 @@ namespace Benchmark.ClientLib
         /// <param name="generateDetail"></param>
         /// <param name="htmlFileName"></param>
         /// <returns></returns>
-        public async Task GenerateHtml(string reportId, bool generateDetail = true, string htmlFileName = "index.html")
+        public async Task GenerateHtmlAsync(string reportId, string htmlFileName = "index.html")
         {
             // access s3 and download json from reportId
             var reports = await GetReports(reportId);
@@ -307,7 +311,7 @@ namespace Benchmark.ClientLib
 
             // generate html based on json data
             var htmlReporter = new HtmlReporter();
-            var htmlReport = htmlReporter.CreateReport(reports, generateDetail);
+            var htmlReport = htmlReporter.CreateReport(reports);
             var page = new BenchmarkReportPageTemplate()
             {
                 Report = htmlReport,
@@ -350,7 +354,7 @@ namespace Benchmark.ClientLib
             }
 
             // Generate Html Report
-            await GenerateHtml(reportId);
+            await GenerateHtmlAsync(reportId);
         }
 
         public async Task CancelCommands()
@@ -439,6 +443,17 @@ namespace Benchmark.ClientLib
                 new ChannelOption("grpc.max_send_message_length", int.MaxValue),
 
             });
+        }
+
+        /// <summary>
+        /// Console Output Report
+        /// </summary>
+        /// <param name="report"></param>
+        private void ConsoleOutput(BenchReport report)
+        {
+            var template = new BenchmarkConsoleOutputTemplate(report);
+            var content = NormalizeNewLineLf(template.TransformText());
+            _logger?.LogInformation(content);
         }
 
         private static string NormalizeNewLine(string content)

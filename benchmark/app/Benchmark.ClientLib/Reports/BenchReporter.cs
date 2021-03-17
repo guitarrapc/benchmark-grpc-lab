@@ -23,6 +23,7 @@ namespace Benchmark.ClientLib.Reports
         public string ReportId { get; }
         public string ClientId { get; }
         public string ExecuteId { get; }
+        public BenchReport Report => _report;
 
         public BenchReporter(string reportId, string clientId, string executeId, Framework framework, string scenarioName, BenchmarkerConfig config)
         {
@@ -69,15 +70,6 @@ namespace Benchmark.ClientLib.Reports
         }
 
         /// <summary>
-        /// Get Report
-        /// </summary>
-        /// <returns></returns>
-        public BenchReport GetReport()
-        {
-            return _report;
-        }
-
-        /// <summary>
         /// Begin Reporter
         /// </summary>
         public void Begin()
@@ -113,9 +105,15 @@ namespace Benchmark.ClientLib.Reports
         /// <param name="results"></param>
         public void AddDetail(string testName, string testType, BenchReporter reporter, Statistics statistics, CallResult[] results)
         {
-            var sortedResults = results.Select(x => x.Duration).OrderBy(x => x).ToArray();
-            var fastest = sortedResults[0];
-            var slowest = sortedResults[^1];
+            TimeSpan[] sortedResults = Array.Empty<TimeSpan>();
+            TimeSpan fastest = TimeSpan.Zero;
+            TimeSpan slowest = TimeSpan.Zero;
+            if (results.Any())
+            {
+                sortedResults = results.Select(x => x.Duration).OrderBy(x => x).ToArray();
+                fastest = sortedResults[0];
+                slowest = sortedResults[^1];
+            }
             var item = new BenchReportItem
             {
                 ExecuteId = reporter.ExecuteId,

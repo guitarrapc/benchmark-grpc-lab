@@ -7,15 +7,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using ZLogger;
 
-
-ThreadPools.ModifyThreadPool(Environment.ProcessorCount * 8, Environment.ProcessorCount * 8);
-
 var builder = Host.CreateDefaultBuilder()
     .ConfigureLogging((hostContext, logging) =>
     {
         logging.ClearProviders();
         logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
-        logging.SetMinimumLevel(LogLevel.Trace);
+        logging.SetMinimumLevel(LogLevel.Information);
     });
 if (Environment.GetEnvironmentVariable("BENCHCLIENT_RUNASWEB") == "true")
 {
@@ -34,9 +31,12 @@ else
 public class BenchmarkRunner : ConsoleAppBase
 {
     private readonly string _path;
+    private readonly bool _generateHtmlReport;
+
     public BenchmarkRunner()
     {
-        _path = Environment.GetEnvironmentVariable("BENCHCLIENT_S3BUCKET") ?? throw new ArgumentNullException("Environment variable 'BENCHCLIENT_S3BUCKET' is not defined.");
+        _path = Environment.GetEnvironmentVariable("BENCHCLIENT_S3BUCKET") ?? "0";
+        _generateHtmlReport = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BENCHCLIENT_SKIP_HTML"));
     }
 
     private bool IsHttpsEndpoint(string endpoint) => endpoint.StartsWith("https://");
@@ -63,6 +63,7 @@ public class BenchmarkRunner : ConsoleAppBase
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+                GenerateHtmlReportAfterBench = _generateHtmlReport,
             }
         };
         await benchmarker.BenchUnary(hostAddress, reportId);
@@ -90,6 +91,7 @@ public class BenchmarkRunner : ConsoleAppBase
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+                GenerateHtmlReportAfterBench = _generateHtmlReport,
             }
         };
         await benchmarker.BenchHub(hostAddress, reportId);
@@ -118,6 +120,7 @@ public class BenchmarkRunner : ConsoleAppBase
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+                GenerateHtmlReportAfterBench = _generateHtmlReport,
             }
         };
         await benchmarker.BenchLongRunHub(waitMilliseconds, hostAddress, reportId);
@@ -145,6 +148,7 @@ public class BenchmarkRunner : ConsoleAppBase
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+                GenerateHtmlReportAfterBench = _generateHtmlReport,
             }
         };
         await benchmarker.BenchGrpc(hostAddress, reportId);
@@ -172,6 +176,7 @@ public class BenchmarkRunner : ConsoleAppBase
                 Duration = duration,
                 TotalRequests = iter,
                 UseSelfCertEndpoint = IsHttpsEndpoint(hostAddress),
+                GenerateHtmlReportAfterBench = _generateHtmlReport,
             }
         };
         await benchmarker.BenchApi(hostAddress, reportId);
@@ -205,10 +210,10 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="reportId"></param>
     /// <param name="htmlFileName"></param>
     /// <returns></returns>
-    public async Task GenerateHtml(string reportId, bool generateDetail, string htmlFileName = "index.html")
+    public async Task GenerateHtml(string reportId, string htmlFileName = "index.html")
     {
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken);
-        await benchmarker.GenerateHtml(reportId, generateDetail, htmlFileName);
+        await benchmarker.GenerateHtmlAsync(reportId, htmlFileName);
     }
 
     public async Task ListClients()

@@ -26,8 +26,14 @@ namespace Benchmark.ClientLib
         /// Number of request workers to run concurrently for const concurrency schedule. Default is 1.
         /// </summary>
         public int ClientConcurrency { get; init; } = 20;
-
-        public bool UseSelfCertEndpoint { get; set; } = false;
+        /// <summary>
+        /// Benchmark target endpoint is tls.
+        /// </summary>
+        public bool UseSelfCertEndpoint { get; set; }
+        /// <summary>
+        /// enable to auto-generate Html Report after Benchmark execution. false to generate manually.
+        /// </summary>
+        public bool GenerateHtmlReportAfterBench { get; set; }
 
         public TimeSpan GetDuration() => Durations.FromString(Duration);
         public string GetRequestPayload() => Payload.FromPayload(RequestPayload);

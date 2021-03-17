@@ -6,7 +6,7 @@ namespace Benchmark.ClientLib.Reports
 {
     public class HtmlReporter
     {
-        public HtmlReport CreateReport(BenchReport[] reports, bool generateDetail)
+        public HtmlReport CreateReport(BenchReport[] reports)
         {
             if (reports == null)
                 throw new ArgumentNullException(nameof(reports));
@@ -87,6 +87,7 @@ namespace Benchmark.ClientLib.Reports
             return sources.SelectMany(x => x.StatusCodeDistributions)
                 .GroupBy(x => x.StatusCode)
                 .Select(x => new HtmlReportRequestStatusCode(x.Key, x.Sum(x => x.Count)))
+                .OrderByDescending(x => x.Count)
                 .ToArray();
         }
         private HtmlReportRequestErrorCode[] GetErrorCodes(IEnumerable<BenchReportItem> sources)
@@ -96,6 +97,7 @@ namespace Benchmark.ClientLib.Reports
                 .Where(x => x.StatusCode?.ToLower() != "ok")
                 .GroupBy(x => x.Detail)
                 .Select(x => new HtmlReportRequestErrorCode(x.Select(x => x.StatusCode).FirstOrDefault(), x.Sum(x => x.Count), x.Key))
+                .OrderByDescending(x => x.Count)
                 .ToArray()
                 ?? Array.Empty<HtmlReportRequestErrorCode>();
         }
@@ -107,12 +109,12 @@ namespace Benchmark.ClientLib.Reports
                 .Select(x => new HtmlReportRequestLatency(x.Key, x.Select(x => x.Latency).Average()))
                 .ToArray();
         }
-        private HtmlReportRequestHistgram[] GetRequestHistograms(IEnumerable<BenchReportItem> sources)
+        private HtmlReportRequestHistogram[] GetRequestHistograms(IEnumerable<BenchReportItem> sources)
         {
             if (sources == null) throw new ArgumentNullException(nameof(sources));
             return sources.SelectMany(x => x.Histogram)
                 .GroupBy(x => x.Mark)
-                .Select(x => new HtmlReportRequestHistgram(x.Key, x.Select(x => x.Count).Sum(), x.Select(x => x.Frequency).Average()))
+                .Select(x => new HtmlReportRequestHistogram(x.Key, x.Select(x => x.Count).Sum(), x.Select(x => x.Frequency).Average()))
                 .ToArray();
         }
         private static string ToJoinedString(IEnumerable<string> values, char separator = ',')
