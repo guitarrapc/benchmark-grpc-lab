@@ -33,7 +33,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 		-e GRPC_SERVER_CPUS \
 		--network=host --detach --tty "${NAME}" >/dev/null
 	sleep 5
-	. ./collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
+	. ./ghz_collect_stats.sh "${NAME}" "${RESULTS_DIR}" &
 	docker run --name ghz --rm --network=host -v "${PWD}/proto:/proto:ro"\
 	    -v "${PWD}/payload:/payload:ro"\
 		--cpus $GRPC_CLIENT_CPUS \
@@ -53,6 +53,6 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
 	docker container stop "${NAME}" >/dev/null
 done
 
-. ./analyze.sh $RESULTS_DIR
+. ./ghz_analyze.sh $RESULTS_DIR
 
 echo "All done."

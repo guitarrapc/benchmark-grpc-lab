@@ -2,4 +2,6 @@ out/
 # CDK asset staging directory
 .cdk.staging
 cdk.out
-result/
+
+# ghz output
+app/results/

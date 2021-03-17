@@ -10,7 +10,7 @@ WORKDIR /src
 COPY ["dotnet_grpc_server_https_bench/Benchmark.Server.Https.csproj", "dotnet_grpc_server_https_bench/"]
 RUN dotnet restore "dotnet_grpc_server_https_bench/Benchmark.Server.Https.csproj"
 COPY . .
-WORKDIR "/dotnet_grpc_server_https_bench"
+WORKDIR "/src/dotnet_grpc_server_https_bench"
 RUN dotnet build "Benchmark.Server.Https.csproj" -c Release -o /app/build
 
 FROM build AS publish
