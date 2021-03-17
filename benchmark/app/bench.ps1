@@ -7,7 +7,7 @@ if ([string]::IsNullOrEmpty($BENCHMARKS_TO_RUN)) {
     $BENCHMARKS_TO_RUN=$((Get-ChildItem -Directory -Path '*_bench').Name | Sort-Object)
 }
 
-$BENCH_NAME=(cat ./bench_command)
+$BENCH_NAME=$(cat ./bench_command)
 $RESULTS_DIR="results/$([DateTime]::Now.ToString('yyyyddMMTHHmmss'))"
 $GRPC_BENCHMARK_DURATION="30s"
 $GRPC_SERVER_CPUS="1"
