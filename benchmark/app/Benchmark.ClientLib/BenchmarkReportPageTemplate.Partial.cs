@@ -29,5 +29,12 @@ namespace Benchmark.ClientLib
         public string GetLineColor(int current) => colorPatterns[current % colorPatterns.Length];
         public string GetColor() => GetColor(0);
         public string GetColor(int current) => pastelColorPatterns[current % pastelColorPatterns.Length];
+
+        public string FormatMs(double ms)
+        {
+            return ms < 1
+                ? string.Format("{0:f4}", ms)
+                : string.Format("{0:f2}", ms);
+        }
     }
 }

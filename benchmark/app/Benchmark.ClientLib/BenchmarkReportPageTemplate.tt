@@ -95,11 +95,11 @@
                         <tr>
                             <td><#= summary.Clients #></td>
                             <td><#= summary.Requests #></td>
-                            <td><#= string.Format("{0:f2}", summary.Duration.TotalSeconds) #> sec</td>
-                            <td><#= string.Format("{0:f3}", summary.Slowest.TotalMilliseconds) #> ms</td>
-                            <td><#= string.Format("{0:f3}", summary.Fastest.TotalMilliseconds) #> ms</td>
-                            <td><#= string.Format("{0:f3}", summary.Average.TotalMilliseconds) #> ms</td>
-                            <td><#= string.Format("{0:f2}", summary.Rps) #> rps</td>
+                            <td><#= FormatMs(summary.Duration.TotalSeconds) #> sec</td>
+                            <td><#= FormatMs(summary.Slowest.TotalMilliseconds) #> ms</td>
+                            <td><#= FormatMs(summary.Fastest.TotalMilliseconds) #> ms</td>
+                            <td><#= FormatMs(summary.Average.TotalMilliseconds) #> ms</td>
+                            <td><#= FormatMs(summary.Rps) #> rps</td>
                         </tr>
                         </tbody>
                     </table>
@@ -120,13 +120,13 @@
                         <tr>
                             <td>Average</td>
                         <# foreach(var item in request.Summaries) { #>
-                            <td><#= string.Format("{0:f3}", item.Duration.TotalMilliseconds) #> ms</td>
+                            <td><#= FormatMs(item.Duration.TotalMilliseconds) #> ms</td>
                         <# } #>
                         </tr>
                         <tr>
                             <td>Rps</td>
                         <# foreach(var item in request.Summaries) { #>
-                            <td><#= string.Format("{0:f2}", item.Rps) #> rps</td>
+                            <td><#= FormatMs(item.Rps) #> rps</td>
                         <# } #>
                         </tr>
                         <tr>
@@ -138,7 +138,7 @@
                         </tbody>
                     </table>
 
-                    <p>StatusCode Distribution</p>
+                    <p>Status code distribution</p>
                     <table class="table table-striped table-sm">
                         <thead>
                             <th scope="col">StatusCode</th>
@@ -154,7 +154,7 @@
                     </table>
 
                     <# if (request.ErrorCodes.Any()) {#>
-                    <p>ErrorCode Distribution</p>
+                    <p>Error distribution</p>
                     <table class="table table-striped table-sm">
                         <thead>
                             <th scope="col">Count</th>
@@ -172,10 +172,54 @@
                     </table>
                     <# } #>
 
-                    <canvas id="<#= request.Key #>LatencyDistribution"></canvas>
                     <canvas id="<#= request.Key #>Histogram"></canvas>
+                    <canvas id="<#= request.Key #>LatencyDistribution"></canvas>
                     <canvas id="<#= request.Key #>RequestAvg"></canvas>
                     <canvas id="<#= request.Key #>RequestStackBar"></canvas>
+
+                    <script>
+                        var ctx = document.getElementById("<#= request.Key #>Histogram");
+                        var myChart = new Chart(ctx, {
+                            type: 'horizontalBar',
+                            data: {
+                                labels: [
+                                <# foreach(var item in request.Histograms) { #>
+                                    "<#= FormatMs(item.Mark) #> [<#= item.Count #>]",
+                                <# } #>
+                                ],
+                                datasets: [
+                                {
+                                    label: "Frequency",
+                                    backgroundColor: "<#= histogramColor #>",
+                                    borderColor: "<#= histogramColor #>",
+                                    data: [
+                                    <# foreach(var item in request.Histograms) { #>
+                                        <#= FormatMs(item.Frequency) #>,
+                                    <# } #>
+                                    ]
+                                },
+                                ]
+                            },
+                            options: {
+                                title: {
+                                    display: true,
+                                    text: 'Response time histogram',
+                                    padding: 3
+                                },
+                                legend: {
+                                    labels: {
+                                        boxWidth: 30,
+                                        padding: 20
+                                    },
+                                    display: true
+                                },
+                                tooltips: {
+                                    mode: 'label' // data colum for tooltip
+                                },
+                                responsive: true
+                            }
+                        });
+                    </script>
 
                     <script>
                         var ctx = document.getElementById("<#= request.Key #>LatencyDistribution");
@@ -203,51 +247,7 @@
                             options: {
                                 title: {
                                     display: true,
-                                    text: 'Latency Distribution',
-                                    padding: 3
-                                },
-                                legend: {
-                                    labels: {
-                                        boxWidth: 30,
-                                        padding: 20
-                                    },
-                                    display: true
-                                },
-                                tooltips: {
-                                    mode: 'label' // data colum for tooltip
-                                },
-                                responsive: true
-                            }
-                        });
-                    </script>
-
-                    <script>
-                        var ctx = document.getElementById("<#= request.Key #>Histogram");
-                        var myChart = new Chart(ctx, {
-                            type: 'horizontalBar',
-                            data: {
-                                labels: [
-                                <# foreach(var item in request.Histograms) { #>
-                                    "<#= item.Mark #> [<#= item.Count #>]",
-                                <# } #>
-                                ],
-                                datasets: [
-                                {
-                                    label: "Frequency",
-                                    backgroundColor: "<#= histogramColor #>",
-                                    borderColor: "<#= histogramColor #>",
-                                    data: [
-                                    <# foreach(var item in request.Histograms) { #>
-                                        <#= item.Frequency #>,
-                                    <# } #>
-                                    ]
-                                },
-                                ]
-                            },
-                            options: {
-                                title: {
-                                    display: true,
-                                    text: 'Histogram',
+                                    text: 'Latency distribution',
                                     padding: 3
                                 },
                                 legend: {
@@ -338,7 +338,7 @@
             <p class="text-center">
                 <a class="text-dark" href="https://github.com/cysharp/MagicOnion/">Visit the GitHub</a>
             /
-            © 2020 Copyright:
+            © 2021 Copyright:
                 <a class="text-dark" href="https://cysharp.co.jp/">Cysharp, Inc.</a>
             </p>
         </div>
