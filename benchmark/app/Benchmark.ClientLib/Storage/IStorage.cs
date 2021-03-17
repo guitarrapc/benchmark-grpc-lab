@@ -60,7 +60,7 @@ namespace Benchmark.ClientLib.Storage
                 };
                 storage = new AmazonS3Storage(logger, config);
             }
-            else if (Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") != "1")
+            else if (Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") == "1")
             {
                 var config = new AmazonS3Config()
                 {
