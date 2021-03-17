@@ -52,7 +52,15 @@ namespace Benchmark.ClientLib.Storage
                 return storage;
 
             // todo: Google... etc...?
-            if (AmazonEnvironment.IsAmazonEc2() || Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") == "1")
+            if (AmazonEnvironment.IsAmazonEc2() && Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") != "0")
+            {
+                var config = new AmazonS3Config()
+                {
+                    RegionEndpoint = Amazon.Util.EC2InstanceMetadata.Region,
+                };
+                storage = new AmazonS3Storage(logger, config);
+            }
+            else if (Environment.GetEnvironmentVariable("BENCHCLIENT_USE_S3") != "1")
             {
                 var config = new AmazonS3Config()
                 {
