@@ -1,8 +1,5 @@
 using MagicOnion;
 using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Benchmark.Server.Shared
@@ -14,15 +11,20 @@ namespace Benchmark.Server.Shared
 
     public interface IBenchmarkHub : IStreamingHub<IBenchmarkHub, IBenchmarkHubReciever>
     {
-        Task Process(BenchmarkData data);
+        Task<BenchmarkReply> SayHelloAsync(BenchmarkRequest data);
     }
 
     [MessagePackObject]
-    public class BenchmarkData
+    public class BenchmarkRequest
     {
         [Key(0)]
-        public string PlainText { get; set; }
+        public string Name { get; set; }
+    }
 
-        // todo: JSON? int? other benchmark data.
+    [MessagePackObject]
+    public class BenchmarkReply
+    {
+        [Key(0)]
+        public string Message { get; set; }
     }
 }

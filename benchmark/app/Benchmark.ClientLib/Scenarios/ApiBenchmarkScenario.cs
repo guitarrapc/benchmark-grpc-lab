@@ -40,11 +40,11 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task<CallResult[]> PlainTextAsync(int requestCount, CancellationToken ct)
         {
-            var data = new BenchmarkData
+            var data = new BenchmarkRequest
             {
-                PlainText = _config.GetRequestPayload(),
+                Name = _config.GetRequestPayload(),
             };
-            var json = JsonSerializer.Serialize<BenchmarkData>(data);
+            var json = JsonSerializer.Serialize<BenchmarkRequest>(data);
 
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)
