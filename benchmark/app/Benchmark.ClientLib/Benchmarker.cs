@@ -8,7 +8,6 @@ using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,8 +25,6 @@ namespace Benchmark.ClientLib
         private readonly ILogger _logger;
         private readonly CancellationToken _cancellationToken;
         private readonly string _clientId = Guid.NewGuid().ToString();
-        private readonly ConcurrentDictionary<string, GrpcChannel> _grpcChannelCache = new ConcurrentDictionary<string, GrpcChannel>();
-        private readonly ConcurrentDictionary<string, Channel> _ccoreChannelCache = new ConcurrentDictionary<string, Channel>();
 
         public BenchmarkerConfig Config { get; init; } = new BenchmarkerConfig();
 
