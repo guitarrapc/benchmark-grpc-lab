@@ -29,7 +29,6 @@ namespace Benchmark.Server
                     if (hostContext.HostingEnvironment.IsDevelopment())
                     {
                         logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
-                        logging.SetMinimumLevel(LogLevel.Trace);
                     }
                 })
                 .ConfigureWebHostDefaults(webBuilder =>

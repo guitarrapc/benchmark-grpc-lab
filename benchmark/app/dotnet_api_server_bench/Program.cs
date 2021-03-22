@@ -25,7 +25,6 @@ namespace Benchmark.Server.Api
                     if (hostContext.HostingEnvironment.IsDevelopment())
                     {
                         logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
-                        logging.SetMinimumLevel(LogLevel.Trace);
                     }
                 })
                 .ConfigureEmbeddedConfiguration(args)
