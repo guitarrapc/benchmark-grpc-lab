@@ -1,4 +1,4 @@
-name: Run benchmarks
+name: benchmark(Issue)
 
 on:
   issues:
