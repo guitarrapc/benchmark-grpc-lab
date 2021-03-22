@@ -5,10 +5,13 @@ using System.Threading.Tasks;
 
 namespace Benchmark.Server.Api.Shared
 {
-    public class BenchmarkData
+    public class BenchmarkRequest
     {
-        public string PlainText { get; set; }
+        public string Name { get; set; }
+    }
 
-        // todo: JSON? int? other benchmark data.
+    public class BenchmarkReply
+    {
+        public string Message { get; set; }
     }
 }

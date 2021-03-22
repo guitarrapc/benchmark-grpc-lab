@@ -30,30 +30,18 @@ namespace Benchmark.Server.Api.Controllers
         }
 
         [HttpPost]
-        public Task Post(BenchmarkData data)
+        public Task<BenchmarkReply> Post(BenchmarkRequest data)
         {
-            Statistics.Connected();
-            try
-            {
-                ProcessRequest(RequestType.PlainText, data);
-            }
-            catch
-            {
-                Statistics.Error();
-            }
-            finally
-            {
-                Statistics.Disconnected();
-            }
-            return Task.CompletedTask;
+            // ProcessRequest(RequestType.PlainText, data);
+            return Task.FromResult(new BenchmarkReply { Message = data.Name });
         }
 
-        private void ProcessRequest(RequestType requestType, BenchmarkData body)
+        private void ProcessRequest(RequestType requestType, BenchmarkRequest body)
         {
             if (requestType == RequestType.PlainText)
             {
                 var writer = GetWriter(Writer, sizeHint: 160 * 16); // 160*16 is for Plaintext, for Json 160 would be enough
-                PlainText(ref writer, Encoding.UTF8.GetBytes(body.PlainText).AsSpan());
+                PlainText(ref writer, Encoding.UTF8.GetBytes(body.Name).AsSpan());
             }
         }
 
