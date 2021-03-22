@@ -2,9 +2,9 @@
 
 Benchmarker is implemented in Benchmark.ClientLib, it benchmark various server.
 
-* dotnet_grpc_server_bench: gRPC server implemeted with both gRPC and MagicOnion.
-* dotnet_grpc_server_https_bench: Self Cert gRPC server implemeted with both gRPC and MagicOnion.
-* dotnet_api_server_bench: REST server implemented with ASP.NET Core API.
+* dotnet_grpc_bench: gRPC server implemeted with both gRPC and MagicOnion.
+* dotnet_grpc_https_bench: Self Cert gRPC server implemeted with both gRPC and MagicOnion.
+* dotnet_api_bench: REST server implemented with ASP.NET Core API.
 
 ### Prerequisites
 
@@ -13,15 +13,15 @@ Windows or Linux or MacOS with Docker. Keep in mind that the results on MacOS ma
 ### Running benchmark
 
 * To build the benchmarks images use following. You need them to run the benchmarks.
-  * linux: `./build.sh dotnet_grpc_server_bench`
-  * windows: `./build.ps1 dotnet_grpc_server_bench`
+  * linux: `./build.sh dotnet_grpc_bench`
+  * windows: `./build.ps1 dotnet_grpc_bench`
 
 To run the benchmarks use following. They will be run sequentially. To change bench command, set command name on `bench_command`.
-  * linux: `./bench.sh dotnet_grpc_server_bench`
-  * windows: `./bench.ps1 dotnet_grpc_server_bench`
+  * linux: `./bench.sh dotnet_grpc_bench`
+  * windows: `./bench.ps1 dotnet_grpc_bench`
 
 To clean-up the benchmark images use following.
-  * linux: `./clean.sh dotnet_grpc_server_bench`.
+  * linux: `./clean.sh dotnet_grpc_bench`.
   * windows: not supported. (do you nedd this?)
 
 > TIPS: to change benchclient command, write command to `bench_command` file.
@@ -40,13 +40,13 @@ Windows or Linux or MacOS with Docker. Keep in mind that the results on MacOS ma
 ### Running benchmark
 
 * To build the benchmarks images use following. You need them to run the benchmarks.
-  * linux: `./ghz_build.sh dotnet_grpc_server_bench`
-  * windows: `./ghz_build.ps1 dotnet_grpc_server_bench`
+  * linux: `./ghz_build.sh dotnet_grpc_bench`
+  * windows: `./ghz_build.ps1 dotnet_grpc_bench`
 
 To run the benchmarks use following. They will be run sequentially.
-  * linux: `./ghz_bench.sh dotnet_grpc_server_bench`
-  * windows: `./ghz_bench.ps1 dotnet_grpc_server_bench`
+  * linux: `./ghz_bench.sh dotnet_grpc_bench`
+  * windows: `./ghz_bench.ps1 dotnet_grpc_bench`
 
 To clean-up the benchmark images use following.
-  * linux: `./ghz_clean.sh dotnet_grpc_server_bench`.
+  * linux: `./ghz_clean.sh dotnet_grpc_bench`.
   * windows: not supported. (do you nedd this?)
