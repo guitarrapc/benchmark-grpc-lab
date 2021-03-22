@@ -9,7 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.event.issue.title, 'RUN BENCHMARK')
     steps:
-      - run: echo ${{ toJson(github) }}
+      - run: echo "$CONTEXT"
+        env:
+          CONTEXT: ${{ toJson(github) }}
       - name: Accept the task
         uses: peter-evans/create-or-update-comment@v1
         with:
