@@ -6,4 +6,5 @@
 *.yml   text    eol=lf
 *.rules text    eol=lf
 *.json  text    eol=lf
+dotnet_*.txt text eol=lf
 Dockerfile  text    eol=lf

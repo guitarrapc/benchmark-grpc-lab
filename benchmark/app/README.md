@@ -24,6 +24,7 @@ To clean-up the benchmark images use following.
   * linux: `./clean.sh dotnet_grpc_server_bench`.
   * windows: not supported. (do you nedd this?)
 
+> TIPS: to change benchclient command, write command to `bench_command` file.
 
 ## Benchmark with grpc_bench
 
