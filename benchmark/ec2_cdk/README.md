@@ -27,6 +27,10 @@ cdk deploy
 
 login to ec2 via Session Manager.
 
+```shell
+aws ssm $(aws ec2 describe-instances --filter "Name=tag-key,Values=Name" "Name=tag-value,Values=GrpcBenchmarkStack/instances" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text)
+```
+
 make sure you can run docker.
 
 ```shell

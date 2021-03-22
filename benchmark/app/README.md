@@ -68,3 +68,40 @@ To run the benchmarks use following. They will be run sequentially.
 To clean-up the benchmark images use following.
   * linux: `./ghz_clean.sh [BENCH1] [BENCH2]`.
   * windows: not supported.
+
+## TIPS
+
+### [DO NOT] Run your benchmarker from Visual Studio
+
+Running benchmarker on Visual Studio will drop RPS particularly.
+Please publish your benchmarker binary and use it.
+`Release` build will increase +10%-20% performance gain then `Debug` build.
+
+```
+dotnet publish Benchmark.Client -c Release
+```
+
+### [DO] Run your benchmark server on Visual Studio
+
+Running benchmark server on Visual Studio cause small drop of RPS.
+It still show you 25000rps for both MagicOnion and gRPC.
+
+> What you must take case is benchmarker, not benchmark server.
+
+### [CONSIDER] Configure Benchmarker Concurrency and Connections parameters impacts performance
+
+Benchmarker has 2 importance parameters, `-concurrency` and `-connections`.
+These 2 parameter has direct performance impact and it depends on your Machine.
+
+* `-concurrency`: Benchmarker internal worker concurrency, default 50. Increase this parameter will gain performance if CPU, Thread has magin.
+* `-connections`: Benchmarker internal gRPC connection reuse, default 30. You can not set larger then concurrency. 20-50 will be suitable for many cases.
+
+### [DO NOT] Use localhost for hostaddress parameter when target is local machine http server
+
+You should use `127.0.0.1:PORT` to benchmark http server on local machine.
+
+Specifing `-hostaddress localhost:PORT` will try IPv6 connection then fall back to IPv4 when failed.
+When this occurd, slowest latency will be more then 1000ms, and RPS drops performance.
+If you doubt this happen on you environment, use Wireshark on loop back address.
+
+> TIPS: If your server is `https` use `localhost` instead of `127.0.0.1`.
