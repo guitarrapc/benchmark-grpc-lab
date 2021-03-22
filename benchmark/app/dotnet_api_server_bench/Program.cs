@@ -22,8 +22,11 @@ namespace Benchmark.Server.Api
                 .ConfigureLogging((hostContext, logging) =>
                 {
                     logging.ClearProviders();
-                    logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
-                    logging.SetMinimumLevel(LogLevel.Trace);
+                    if (hostContext.HostingEnvironment.IsDevelopment())
+                    {
+                        logging.AddZLoggerConsole(configure => configure.EnableStructuredLogging = false);
+                        logging.SetMinimumLevel(LogLevel.Trace);
+                    }
                 })
                 .ConfigureEmbeddedConfiguration(args)
                 .ConfigureWebHostDefaults(webBuilder =>
