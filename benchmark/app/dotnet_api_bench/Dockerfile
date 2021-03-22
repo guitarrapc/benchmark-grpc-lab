@@ -6,10 +6,10 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["dotnet_api_server_bench/Benchmark.Server.Api.csproj", "dotnet_api_server_bench/"]
-RUN dotnet restore "dotnet_api_server_bench/Benchmark.Server.Api.csproj"
+COPY ["dotnet_api_bench/Benchmark.Server.Api.csproj", "dotnet_api_bench/"]
+RUN dotnet restore "dotnet_api_bench/Benchmark.Server.Api.csproj"
 COPY . .
-WORKDIR "/src/dotnet_api_server_bench"
+WORKDIR "/src/dotnet_api_bench"
 RUN dotnet build "Benchmark.Server.Api.csproj" -c Release -o /app/build
 
 FROM build AS publish

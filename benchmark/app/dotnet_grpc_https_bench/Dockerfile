@@ -7,10 +7,10 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["dotnet_grpc_server_https_bench/Benchmark.Server.Https.csproj", "dotnet_grpc_server_https_bench/"]
-RUN dotnet restore "dotnet_grpc_server_https_bench/Benchmark.Server.Https.csproj"
+COPY ["dotnet_grpc_https_bench/Benchmark.Server.Https.csproj", "dotnet_grpc_https_bench/"]
+RUN dotnet restore "dotnet_grpc_https_bench/Benchmark.Server.Https.csproj"
 COPY . .
-WORKDIR "/src/dotnet_grpc_server_https_bench"
+WORKDIR "/src/dotnet_grpc_https_bench"
 RUN dotnet build "Benchmark.Server.Https.csproj" -c Release -o /app/build
 
 FROM build AS publish

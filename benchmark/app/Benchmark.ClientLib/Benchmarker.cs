@@ -44,7 +44,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchUnary(string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task MagicOnionUnary(string hostAddress = "http://localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))
@@ -76,7 +76,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchHub(string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task MagicOnionHub(string hostAddress = "http://localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))
@@ -110,7 +110,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task MagicOnionLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))
@@ -145,7 +145,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress">IP:Port Style address.</param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchCCoreLongRunHub(int waitMilliseconds, bool insecure = true, string hostAddress = "localhost:5000", string reportId = "")
+        public async Task GrpcCCoreLongRunHub(int waitMilliseconds, bool insecure = true, string hostAddress = "localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))
@@ -182,7 +182,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task GrpcUnary(string hostAddress = "http://localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))
@@ -214,7 +214,7 @@ namespace Benchmark.ClientLib
         /// <param name="hostAddress"></param>
         /// <param name="reportId"></param>
         /// <returns></returns>
-        public async Task BenchApi(string hostAddress = "http://localhost:5000", string reportId = "")
+        public async Task RestApi(string hostAddress = "http://localhost:5000", string reportId = "")
         {
             Config.Validate();
             if (string.IsNullOrEmpty(reportId))

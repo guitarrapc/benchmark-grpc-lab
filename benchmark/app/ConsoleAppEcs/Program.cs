@@ -168,7 +168,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchGrpc(_hostAddress, _reportId);
+                await _benchmarker.GrpcUnary(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -232,7 +232,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchApi(_hostAddress, _reportId);
+                await _benchmarker.RestApi(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -296,7 +296,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchUnary(_hostAddress, _reportId);
+                await _benchmarker.MagicOnionUnary(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -360,7 +360,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchHub(_hostAddress, _reportId);
+                await _benchmarker.MagicOnionHub(_hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -425,7 +425,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchLongRunHub(_waitMilliseconds, _hostAddress, _reportId);
+                await _benchmarker.MagicOnionLongRunHub(_waitMilliseconds, _hostAddress, _reportId);
             }
             catch (Exception ex)
             {
@@ -499,7 +499,7 @@ namespace ConsoleAppEcs
         {
             try
             {
-                await _benchmarker.BenchCCoreLongRunHub(_waitMilliseconds, insecure: _isHttps, _hostAddress, _reportId);
+                await _benchmarker.GrpcCCoreLongRunHub(_waitMilliseconds, insecure: _isHttps, _hostAddress, _reportId);
             }
             catch (Exception ex)
             {

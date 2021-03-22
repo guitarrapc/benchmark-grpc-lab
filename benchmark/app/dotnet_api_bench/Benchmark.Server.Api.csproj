@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\dotnet_grpc_server_bench\SharedUtils\**\*.cs" Link="SharedUtils\%(RecursiveDir)\%(FileName)%(Extension)" />
+    <Compile Include="..\dotnet_grpc_bench\SharedUtils\**\*.cs" Link="SharedUtils\%(RecursiveDir)\%(FileName)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
