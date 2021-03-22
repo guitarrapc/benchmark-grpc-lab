@@ -42,10 +42,7 @@ namespace Benchmark.ClientLib.Scenarios
 
         private async Task<CallResult[]> PlainTextAsync(int requestCount, CancellationToken ct)
         {
-            var data = new BenchmarkData
-            {
-                PlainText = _config.GetRequestPayload(),
-            };
+            var data = new BenchmarkData { PlainText = _config.GetRequestPayload() };
 
             var duration = _config.GetDuration();
             if (duration != TimeSpan.Zero)

@@ -46,6 +46,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchUnary(string hostAddress = "http://localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -77,6 +78,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchHub(string hostAddress = "http://localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -110,6 +112,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -144,6 +147,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchCCoreLongRunHub(int waitMilliseconds, bool insecure = true, string hostAddress = "localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -212,6 +216,7 @@ namespace Benchmark.ClientLib
         /// <returns></returns>
         public async Task BenchApi(string hostAddress = "http://localhost:5000", string reportId = "")
         {
+            Config.Validate();
             if (string.IsNullOrEmpty(reportId))
                 reportId = NewReportId();
 
@@ -399,7 +404,7 @@ namespace Benchmark.ClientLib
             {
                 // default HTTP/2 MutipleConnections = 100, true enable additional HTTP/2 connection via channel.
                 // memo: create Channel Pool and random get pool for each connection to avoid too match channel connection.
-                EnableMultipleHttp2Connections = false,
+                EnableMultipleHttp2Connections = true,
                 // Enable KeepAlive to keep HTTP/2 while non-active status.
                 PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
                 KeepAlivePingDelay = TimeSpan.FromSeconds(60),
@@ -438,7 +443,6 @@ namespace Benchmark.ClientLib
                 new ChannelOption("grpc.keepalive_timeout_ms", 30_000),
                 new ChannelOption("grpc.max_receive_message_length", int.MaxValue),
                 new ChannelOption("grpc.max_send_message_length", int.MaxValue),
-
             });
         }
 
