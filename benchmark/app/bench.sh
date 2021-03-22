@@ -27,6 +27,11 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
     TEST_NAME="$command-$NAME"
     echo "==> Running benchmark for ${NAME} / ${command}..."
 
+    host_address="http://127.0.0.1:5000"
+    if [[ $NAME == *"https"* ]]; then
+        host_address="https://localhost:5000"
+    fi
+
     mkdir -p "${RESULTS_DIR}"
     docker run --name "${TEST_NAME}" --rm \
       --cpus "${GRPC_SERVER_CPUS}" \
@@ -42,6 +47,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
       benchmark.client:latest \
           BenchmarkRunner \
           $command \
+          -hostaddress $host_address \
           -duration $GRPC_BENCHMARK_DURATION \
           -concurrency $GRPC_CLIENT_CONCURRENCY \
           -connections $GRPC_CLIENT_CONNECTIONS >"${RESULTS_DIR}/${TEST_NAME}".report
