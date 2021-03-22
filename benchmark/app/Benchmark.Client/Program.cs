@@ -55,7 +55,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchUnary(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
+    public async Task BenchUnary(string hostAddress = "http://127.0.0.1:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -83,7 +83,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchHub(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
+    public async Task BenchHub(string hostAddress = "http://127.0.0.1:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -112,7 +112,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
+    public async Task BenchLongRunHub(int waitMilliseconds, string hostAddress = "http://127.0.0.1:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -140,7 +140,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchGrpc(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
+    public async Task BenchGrpc(string hostAddress = "http://127.0.0.1:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -168,7 +168,7 @@ public class BenchmarkRunner : ConsoleAppBase
     /// <param name="connections"></param>
     /// <param name="reportId"></param>
     /// <returns></returns>
-    public async Task BenchApi(string hostAddress = "http://localhost:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
+    public async Task BenchApi(string hostAddress = "http://127.0.0.1:5000", string iterations = "1", string duration = "30s", int concurrency = 50, int connections = 50, string reportId = "")
     {
         var iter = iterations.Split(',').Select(x => int.Parse(x.Trim())).ToArray();
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken)
@@ -226,7 +226,7 @@ public class BenchmarkRunner : ConsoleAppBase
         await benchmarker.ListClients();
     }
 
-    public async Task RunAllClient(int processCount, string iterations = "256,1024,4096,16384", string benchCommand = "benchall", string hostAddress = "http://localhost:5000", string reportId = "")
+    public async Task RunAllClient(int processCount, string iterations = "256,1024,4096,16384", string benchCommand = "benchall", string hostAddress = "http://127.0.0.1:5000", string reportId = "")
     {
         var benchmarker = new Benchmarker(_path, Context.Logger, Context.CancellationToken);
         await benchmarker.RunAllClient(processCount, iterations, benchCommand, hostAddress, reportId);
