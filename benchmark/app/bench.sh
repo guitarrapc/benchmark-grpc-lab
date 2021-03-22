@@ -27,9 +27,9 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
     TEST_NAME="$command-$NAME"
     echo "==> Running benchmark for ${NAME} / ${command}..."
 
-    host_address="http://127.0.0.1:5000"
+    hostaddress="http://127.0.0.1:5000"
     if [[ $NAME == *"https"* ]]; then
-        host_address="https://localhost:5000"
+        hostaddress="https://localhost:5001"
     fi
 
     mkdir -p "${RESULTS_DIR}"
@@ -41,13 +41,13 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
       --network=host --detach --tty "${NAME}" >/dev/null
     sleep 5
     . ./collect_stats.sh "${TEST_NAME}" "${RESULTS_DIR}" &
-    docker run --name ghz --rm --network=host \
+    docker run --name benchmark.client --rm --network=host \
       --cpus $GRPC_CLIENT_CPUS \
       -e BENCHCLIENT_USE_S3="0" \
       benchmark.client:latest \
           BenchmarkRunner \
           $command \
-          -hostaddress $host_address \
+          -hostaddress $hostaddress \
           -duration $GRPC_BENCHMARK_DURATION \
           -concurrency $GRPC_CLIENT_CONCURRENCY \
           -connections $GRPC_CLIENT_CONNECTIONS >"${RESULTS_DIR}/${TEST_NAME}".report
