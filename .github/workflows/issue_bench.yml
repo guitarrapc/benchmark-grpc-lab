@@ -23,12 +23,12 @@ jobs:
           labels: benchmark
       - uses: actions/checkout@v2
       - name: Build images
-        run: bash -x ./build.sh dotnet_grpc_bench dotnet_grpc_https_bench
+        run: bash -x ./build.sh
         working-directory: ./benchmark/app
       - name: Run tests
         id: run_bench
         run: |
-          bash -x ./bench.sh dotnet_grpc_bench dotnet_grpc_https_bench | tee bench.results
+          bash -x ./bench.sh | tee bench.results
           REPORT="$(cat bench.results)"
           REPORT="${REPORT//'%'/'%25'}"
           REPORT="${REPORT//$'\n'/'%0A'}"
