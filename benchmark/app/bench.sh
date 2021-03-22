@@ -24,7 +24,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
   COMMANDS=$(< "./${benchmark}.txt")
   for command in ${COMMANDS}; do
     NAME="${benchmark##*/}"
-    $TEST_NAME="$command-$NAME"
+    TEST_NAME="$command-$NAME"
     echo "==> Running benchmark for ${NAME} / ${command}..."
 
     mkdir -p "${RESULTS_DIR}"
