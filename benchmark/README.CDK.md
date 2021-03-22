@@ -35,7 +35,6 @@ cdk bootstrap # only on initial execution
 cdk deploy
 ```
 
-
 ## Deploy TIPS
 
 * Use Datadog to monitor benchmark ec2 and fargate metrics.
