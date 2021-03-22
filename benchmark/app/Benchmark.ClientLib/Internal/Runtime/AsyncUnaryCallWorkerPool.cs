@@ -25,7 +25,7 @@ namespace Benchmark.ClientLib.Internal.Runtime
         public bool Timeouted => _timeoutTcs.Task.IsCompleted;
         public bool Completed => _completeTask.Task.IsCompleted;
 
-        public AsyncUnaryCallWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 1000, ct)
+        public AsyncUnaryCallWorkerPool(int workerCount, CancellationToken ct) : this(workerCount, 2000, ct)
         {
         }
 

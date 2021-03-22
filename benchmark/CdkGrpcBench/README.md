@@ -45,4 +45,8 @@ git clone https://github.com/guitarrapc/benchmark-lab.git
 cd benchmark-lab/benchmark/app
 bash ./build.sh
 bash ./bench.sh
+GRPC_SERVER_CPUS=1 GRPC_CLIENT_CPUS=8 bash ./bench.sh
+GRPC_SERVER_CPUS=4 GRPC_CLIENT_CPUS=12 bash ./bench.sh
+GRPC_SERVER_CPUS=8 GRPC_CLIENT_CPUS=16 bash ./bench.sh
+GRPC_SERVER_CPUS=16 GRPC_CLIENT_CPUS=16 bash ./bench.sh
 ```
