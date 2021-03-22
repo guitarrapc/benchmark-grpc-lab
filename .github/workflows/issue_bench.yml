@@ -9,15 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.event.issue.title, 'RUN BENCHMARK')
     steps:
-      - run: echo "$CONTEXT"
-        env:
-          CONTEXT: ${{ toJson(github) }}
       - name: Accept the task
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
             Serving the benchmark. I will update the issue when it's finished.
+
+            > see progress: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - uses: actions-ecosystem/action-add-labels@v1.1.0
         with:
           github_token: ${{ secrets.github_token }}

@@ -60,7 +60,7 @@ foreach ($benchmark in ${BENCHMARKS_TO_RUN}) {
         Remove-Job $job
         docker container stop "${TEST_NAME}" > $null
     }
-
-    . ./analyze.ps1 $RESULTS_DIR
 }
+
+. ./analyze.ps1 $RESULTS_DIR
 echo "All done."
