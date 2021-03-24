@@ -28,7 +28,7 @@ for benchmark in ${BENCHMARKS_TO_RUN}; do
     echo "==> Running benchmark for ${NAME} / ${command}..."
 
     hostaddress="http://127.0.0.1:5000"
-    if [[ $NAME == *"https"* ]]; then
+    if [[ $NAME == *"https"* ]] || [[ $command == *"http2"* ]]; then
         hostaddress="https://localhost:5001"
     fi
 

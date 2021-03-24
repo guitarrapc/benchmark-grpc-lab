@@ -80,10 +80,16 @@ namespace Benchmark.ClientLib.Scenarios
 
             public ApiClient(string endpoint, bool useHttp2)
             {
-                _client = new HttpClient();
                 if (useHttp2)
                 {
+                    var clientHandler = new HttpClientHandler();
+                    clientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true;
+                    _client = new HttpClient(clientHandler);
                     _client.DefaultRequestVersion = new Version(2, 0);
+                }
+                else
+                {
+                    _client = new HttpClient();
                 }
                 _endpointPlainText = endpoint + "/plaintext";
             }
