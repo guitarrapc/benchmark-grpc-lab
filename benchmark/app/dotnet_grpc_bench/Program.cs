@@ -36,17 +36,7 @@ namespace Benchmark.Server
                     webBuilder
                         .ConfigureKestrel(serverOptions =>
                         {
-                            Console.WriteLine($"MaxRequestBodySize: {serverOptions.Limits.MaxRequestBodySize}");
-                            // default unlimit
-                            // serverOptions.Limits.MaxConcurrentConnections = null;
-                            // serverOptions.Limits.MaxConcurrentUpgradedConnections = null;
-
-                            serverOptions.Limits.MaxRequestBodySize = null; // default 30000000
-
-                            serverOptions.Limits.Http2.MaxStreamsPerConnection = 10000; // default 100
-                            serverOptions.Limits.Http2.MaxFrameSize = 32768; // default 16384
-                            serverOptions.Limits.Http2.InitialConnectionWindowSize = 655350; // default 131072
-                            serverOptions.Limits.Http2.InitialStreamWindowSize = 655350; // default 98304
+                            serverOptions.Limits.Http2.MaxStreamsPerConnection = 10000;
                         })
                         .UseKestrel(options =>
                         {
