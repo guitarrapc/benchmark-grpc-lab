@@ -52,7 +52,7 @@ benchmark for following to keep in Wiki,
 ```sh
 bash ./build.sh
 GRPC_SERVER_CPUS=1 GRPC_CLIENT_CPUS=8 GRPC_CLIENT_CONCURRENCY=50 GRPC_CLIENT_CONNECTIONS=5 bash ./bench.sh
-GRPC_SERVER_CPUS=4 GRPC_CLIENT_CPUS=12 GRPC_CLIENT_CONCURRENCY=50 GRPC_CLIENT_CONNECTIONS=5 bash ./bench.sh
+GRPC_SERVER_CPUS=4 GRPC_CLIENT_CPUS=12 GRPC_CLIENT_CONCURRENCY=100 GRPC_CLIENT_CONNECTIONS=5 bash ./bench.sh
 ```
 
 ## Local
@@ -63,6 +63,13 @@ Are you using Windows? Run bench via PowerShell.
 git clone https://github.com/guitarrapc/benchmark-lab.git
 cd benchmark-lab/benchmark/app
 ./build.ps1
+./bench.ps1
+```
+
+benchmark for following to keep in Wiki,
+
+```
+./build.ps1
 $GRPC_SERVER_CPUS=1; $GRPC_CLIENT_CPUS=8; $GRPC_CLIENT_CONCURRENCY=50; $GRPC_CLIENT_CONNECTIONS=5; ./bench.ps1
-$GRPC_SERVER_CPUS=4; $GRPC_CLIENT_CPUS=12; $GRPC_CLIENT_CONCURRENCY=50; $GRPC_CLIENT_CONNECTIONS=5; ./bench.ps1
+$GRPC_SERVER_CPUS=4; $GRPC_CLIENT_CPUS=12; $GRPC_CLIENT_CONCURRENCY=100; $GRPC_CLIENT_CONNECTIONS=5; ./bench.ps1
 ```
