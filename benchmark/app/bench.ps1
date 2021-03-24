@@ -35,7 +35,7 @@ foreach ($benchmark in ${BENCHMARKS_TO_RUN}) {
         echo "==> Running benchmark for ${NAME} / ${command}..."
         
         $hostAddress = "http://127.0.0.1:5000"
-        if ($NAME -match "https") {
+        if (($NAME -match "https") -or ($command -match "http2")) {
             $hostAddress = "https://localhost:5001"
         }
 
