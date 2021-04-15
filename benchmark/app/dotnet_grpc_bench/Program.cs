@@ -36,10 +36,10 @@ namespace Benchmark.Server
                     webBuilder
                         .ConfigureKestrel(serverOptions =>
                         {
-                            // per channel Stream (ServerStream, ClientStream, Duplex) will cap by this value.
+                            // per channel Stream (ServerStream, ClientStream, Duplex) will cap by this value. default 100
                             serverOptions.Limits.Http2.MaxStreamsPerConnection = 50000;
                         })
                         .UseStartup<Startup>();
                 });
     }
-} 
+}
